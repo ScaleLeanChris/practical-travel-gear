@@ -69,6 +69,7 @@ export interface BrokenBacklink {
 	sourceDomain: string;
 	targetUrl: string;
 	anchor: string;
+	redirectTarget: string | null;
 }
 
 export async function fetchRankedKeywords(
@@ -153,7 +154,7 @@ export async function fetchBrokenBacklinks(
 			target: domain,
 			limit: 500,
 			mode: "one_per_domain",
-			filters: ["page_from_status_code", "=", 200, "AND", "page_to_status_code", "=", 404],
+			filters: ["is_broken", "=", true],
 		},
 	]);
 
@@ -163,6 +164,7 @@ export async function fetchBrokenBacklinks(
 		sourceDomain: item.domain_from ?? "",
 		targetUrl: item.url_to ?? "",
 		anchor: item.anchor ?? "",
+		redirectTarget: item.url_to_redirect_target ?? null,
 	}));
 }
 

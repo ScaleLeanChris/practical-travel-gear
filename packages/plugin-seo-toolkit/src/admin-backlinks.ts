@@ -62,15 +62,26 @@ export async function buildBacklinksPage(ctx: PluginContext) {
 		rank: String(d.rank ?? 0),
 	}));
 
-	// For broken backlinks: show the target path, source, and status
+	// For broken backlinks: show target path, source, status, and redirect info
 	const brokenRows = broken.slice(0, 50).map((b: any) => {
 		const targetPath = extractPath(b.targetUrl ?? "");
 		const exists = knownPaths.has(targetPath);
+		const hasRedirect = !!b.redirectTarget;
+
+		let status: string;
+		if (exists) {
+			status = "Live";
+		} else if (hasRedirect) {
+			status = "Redirected";
+		} else {
+			status = "404";
+		}
+
 		return {
 			targetPath,
-			status: exists ? "Page exists (URL changed?)" : "404 — needs redirect",
+			status,
+			redirect: hasRedirect ? extractPath(b.redirectTarget) : "None",
 			source: b.sourceDomain ?? "",
-			sourceUrl: b.sourceUrl ?? "",
 			anchor: b.anchor ?? "",
 		};
 	});
@@ -124,8 +135,9 @@ export async function buildBacklinksPage(ctx: PluginContext) {
 				type: "table",
 				blockId: "broken-backlinks",
 				columns: [
-					{ key: "targetPath", label: "Your URL (404)", format: "text" },
+					{ key: "targetPath", label: "Target URL on Your Site", format: "text" },
 					{ key: "status", label: "Status", format: "badge" },
+					{ key: "redirect", label: "Redirect To", format: "text" },
 					{ key: "source", label: "Linking Domain", format: "text" },
 					{ key: "anchor", label: "Anchor Text", format: "text" },
 				],
