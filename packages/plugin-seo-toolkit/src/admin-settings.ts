@@ -5,6 +5,7 @@ export async function buildSettingsPage(ctx: PluginContext) {
 	const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
 	const autoRefresh = (await ctx.kv.get<boolean>("settings:autoRefresh")) ?? true;
 	const lastRefresh = await ctx.kv.get<string>("settings:lastRefresh");
+	const hasPassword = !!(await ctx.kv.get<string>("settings:dataforseoPassword"));
 
 	return {
 		blocks: [
@@ -28,8 +29,8 @@ export async function buildSettingsPage(ctx: PluginContext) {
 					{
 						type: "secret_input",
 						action_id: "dataforseoPassword",
-						label: "DataForSEO API Password",
-						placeholder: "From app.dataforseo.com dashboard",
+						label: hasPassword ? "DataForSEO API Password (saved)" : "DataForSEO API Password",
+						placeholder: hasPassword ? "Password saved \u2014 leave blank to keep" : "From app.dataforseo.com dashboard",
 					},
 					{
 						type: "text_input",
@@ -67,12 +68,14 @@ export async function buildSettingsPage(ctx: PluginContext) {
 				elements: [
 					{
 						type: "button",
+						label: "Fetch Rankings & Backlinks",
 						text: "Fetch Rankings & Backlinks",
 						action_id: "refresh_data",
 						style: "primary",
 					},
 					{
 						type: "button",
+						label: "Run Content Audit",
 						text: "Run Content Audit",
 						action_id: "run_audit",
 					},
