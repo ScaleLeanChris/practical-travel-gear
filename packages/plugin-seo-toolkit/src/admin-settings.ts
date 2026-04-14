@@ -59,14 +59,24 @@ export async function buildSettingsPage(ctx: PluginContext) {
 			{ type: "divider" },
 			{ type: "header", text: "Actions" },
 			{
-				type: "section",
-				text: "**Fetch Rankings & Backlinks** — Pull the latest keyword rankings, backlink profile, and broken inbound links from DataForSEO. Uses 4-5 API calls.",
-				accessory: { type: "button", text: "Refresh Data", action_id: "refresh_data" },
+				type: "context",
+				text: "Fetch rankings and backlinks from DataForSEO, or scan your content for SEO issues.",
 			},
 			{
-				type: "section",
-				text: "**Scan Content for SEO Issues** — Audit all published posts and pages for missing descriptions, thin content, duplicate titles, missing alt text, and more.",
-				accessory: { type: "button", text: "Run Audit", action_id: "run_audit" },
+				type: "actions",
+				elements: [
+					{
+						type: "button",
+						text: "Fetch Rankings & Backlinks",
+						action_id: "refresh_data",
+						style: "primary",
+					},
+					{
+						type: "button",
+						text: "Run Content Audit",
+						action_id: "run_audit",
+					},
+				],
 			},
 		],
 	};
