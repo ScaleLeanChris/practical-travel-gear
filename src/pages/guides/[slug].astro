@@ -1,0 +1,472 @@
+---
+import {
+	getEmDashEntry,
+	getEmDashCollection,
+	getEntryTerms,
+	getSeoMeta,
+} from "emdash";
+import {
+	Image,
+	PortableText,
+	WidgetArea,
+} from "emdash/ui";
+import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
+import { getReadingTime } from "../../utils/reading-time";
+
+const { slug } = Astro.params;
+
+if (!slug) {
+	return Astro.redirect("/404");
+}
+
+const { entry: guide, cacheHint } = await getEmDashEntry("guides", slug);
+
+if (!guide) {
+	return Astro.redirect("/404");
+}
+
+Astro.cache.set(cacheHint);
+
+// Get featured image URL for OG fallback
+function getImageUrl(img: unknown): string | undefined {
+	if (!img || typeof img !== "object") return undefined;
+	const image = img as Record<string, unknown>;
+	if (typeof image.src === "string" && image.src) {
+		return image.src.startsWith("http")
+			? image.src
+			: `${Astro.url.origin}${image.src}`;
+	}
+	const meta = image.meta as Record<string, unknown> | undefined;
+	const storageKey =
+		(typeof meta?.storageKey === "string" ? meta.storageKey : undefined) ||
+		(typeof image.id === "string" ? image.id : undefined);
+	if (storageKey) {
+		return `${Astro.url.origin}/_emdash/api/media/file/${storageKey}`;
+	}
+	return undefined;
+}
+const featuredImageUrl = getImageUrl(guide.data.featured_image);
+
+const seo = getSeoMeta(guide, {
+	siteTitle: "Practical Travel Gear",
+	siteUrl: Astro.url.origin,
+	path: `/guides/${slug}`,
+	defaultOgImage: featuredImageUrl,
+});
+
+// Get tags for this guide
+const tags = await getEntryTerms("guides", guide.data.id, "tag");
+const brands = await getEntryTerms("guides", guide.data.id, "brand");
+
+// Bylines
+const bylines = guide.data.bylines ?? [];
+
+// Reading time
+const readingTime = getReadingTime(guide.data.content);
+
+const publishDate =
+	guide.data.publishedAt?.toLocaleDateString("en-US", {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+	}) ?? null;
+---
+
+<Base
+	title={seo.title}
+	description={seo.description}
+	image={seo.ogImage}
+	canonical={seo.canonical}
+	robots={seo.robots}
+	type="article"
+	publishedTime={guide.data.publishedAt?.toISOString() ?? null}
+	modifiedTime={guide.data.updatedAt.toISOString()}
+	content={{ collection: "guides", id: guide.data.id, slug }}
+>
+	<article class="guide">
+		{guide.data.featured_image && (
+			<div class="guide-hero" {...guide.edit.featured_image}>
+				<Image image={guide.data.featured_image} />
+			</div>
+		)}
+
+		<div class="guide-grid">
+			<aside class="guide-meta-col">
+				<div class="meta-sticky">
+					{bylines.length > 0 && (
+						<div class="meta-block">
+							<span class="meta-label">Author</span>
+							<div class="bylines">
+								{bylines.map((credit) => (
+									<div class="byline">
+										{credit.byline.avatarMediaId && (
+											<img
+												src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
+												alt={credit.byline.displayName}
+												class="byline-avatar"
+											/>
+										)}
+										<span class="byline-name">{credit.byline.displayName}</span>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+					{publishDate && (
+						<div class="meta-block">
+							<span class="meta-label">Updated</span>
+							<time class="meta-value">{publishDate}</time>
+						</div>
+					)}
+					<div class="meta-block">
+						<span class="meta-label">Reading time</span>
+						<span class="meta-value">{readingTime} min</span>
+					</div>
+					{tags.length > 0 && (
+						<div class="meta-block">
+							<span class="meta-label">Tags</span>
+							<div class="meta-tags">
+								{tags.map((t) => (
+									<a href={`/tag/${t.slug}`} class="meta-tag">{t.label}</a>
+								))}
+							</div>
+						</div>
+					)}
+					{brands.length > 0 && (
+						<div class="meta-block">
+							<span class="meta-label">Brands</span>
+							<div class="meta-tags">
+								{brands.map((b) => (
+									<span class="meta-tag">{b.label}</span>
+								))}
+							</div>
+						</div>
+					)}
+				</div>
+			</aside>
+
+			<div class="guide-main">
+				<header class="guide-header">
+					<div class="guide-badge">Guide</div>
+					<h1 class="guide-title" {...guide.edit.title}>{guide.data.title}</h1>
+					{guide.data.excerpt && (
+						<p class="guide-excerpt">{guide.data.excerpt}</p>
+					)}
+				</header>
+
+				<div class="guide-content">
+					<PortableText value={guide.data.content} />
+				</div>
+			</div>
+
+			<aside class="guide-sidebar">
+				<div class="sidebar-sticky">
+					<nav class="toc" aria-label="Table of contents">
+						<h4 class="toc-title">On this page</h4>
+						<div class="toc-content" id="toc-content">
+							<!-- Populated by JS -->
+						</div>
+					</nav>
+					<div class="sidebar-widgets">
+						<WidgetArea name="sidebar" />
+					</div>
+				</div>
+			</aside>
+		</div>
+	</article>
+
+	<script>
+		function buildToc() {
+			const content = document.querySelector(".guide-content");
+			const tocContainer = document.getElementById("toc-content");
+			if (!content || !tocContainer) return;
+
+			const headings = content.querySelectorAll("h2, h3");
+			if (headings.length === 0) {
+				const toc = document.querySelector(".toc") as HTMLElement | null;
+				if (toc) toc.style.display = "none";
+				return;
+			}
+
+			const list = document.createElement("ul");
+			list.className = "toc-list";
+
+			headings.forEach((heading, index) => {
+				if (!heading.id) {
+					heading.id = `heading-${index}`;
+				}
+
+				const li = document.createElement("li");
+				li.className =
+					heading.tagName === "H3" ? "toc-item toc-item--nested" : "toc-item";
+
+				const link = document.createElement("a");
+				link.href = `#${heading.id}`;
+				link.className = "toc-link";
+				link.textContent = heading.textContent;
+
+				li.appendChild(link);
+				list.appendChild(li);
+			});
+
+			tocContainer.appendChild(list);
+
+			const observer = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						const id = entry.target.id;
+						const link = tocContainer.querySelector(`a[href="#${id}"]`);
+						if (link) {
+							if (entry.isIntersecting) {
+								tocContainer
+									.querySelectorAll(".toc-link")
+									.forEach((l) => l.classList.remove("active"));
+								link.classList.add("active");
+							}
+						}
+					});
+				},
+				{ rootMargin: "-80px 0px -80% 0px" }
+			);
+
+			headings.forEach((heading) => observer.observe(heading));
+		}
+
+		buildToc();
+	</script>
+</Base>
+
+<style>
+	.guide {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+	}
+
+	.guide-hero {
+		margin: var(--spacing-16) var(--spacing-6);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+	}
+
+	.guide-hero img {
+		width: 100%;
+		height: auto;
+		max-height: 500px;
+		object-fit: cover;
+	}
+
+	.guide-grid {
+		display: grid;
+		grid-template-columns:
+			var(--meta-col-width) minmax(0, var(--content-width))
+			var(--gutter-width);
+		gap: var(--spacing-10);
+		justify-content: center;
+		padding: 0 var(--spacing-6);
+		margin: var(--spacing-16) 0;
+	}
+
+	.guide-meta-col { display: block; }
+
+	.meta-sticky {
+		position: sticky;
+		top: calc(var(--nav-height) + var(--spacing-8));
+	}
+
+	.meta-block { margin-bottom: var(--spacing-6); }
+	.meta-label {
+		display: block;
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-1);
+	}
+	.meta-value {
+		display: block;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+	.meta-tags { display: flex; flex-wrap: wrap; gap: var(--spacing-1); }
+	.meta-tag {
+		display: inline-block;
+		padding: var(--tag-padding-y) var(--spacing-2);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface);
+		border-radius: var(--radius);
+		text-decoration: none;
+		transition: color var(--transition-fast), background var(--transition-fast);
+	}
+	.meta-tag:hover { color: var(--color-text); background: var(--color-border); }
+
+	.bylines { display: flex; flex-direction: column; gap: var(--spacing-1); }
+	.byline { display: flex; align-items: center; gap: var(--spacing-2); }
+	.byline-avatar {
+		width: var(--avatar-size-lg);
+		height: var(--avatar-size-lg);
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	.byline-name {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+		color: var(--color-text);
+	}
+
+	.guide-main { min-width: 0; }
+
+	.guide-header { margin-bottom: var(--spacing-10); }
+
+	.guide-badge {
+		display: inline-block;
+		padding: var(--spacing-1) var(--spacing-3);
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-on-accent);
+		background: var(--color-accent);
+		border-radius: var(--radius);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.guide-title {
+		font-size: clamp(2rem, 5vw, var(--font-size-5xl));
+		font-weight: 700;
+		line-height: var(--leading-tight);
+		letter-spacing: var(--tracking-tight);
+		margin-bottom: var(--spacing-4);
+	}
+
+	.guide-excerpt {
+		font-size: var(--font-size-xl);
+		line-height: var(--leading-relaxed);
+		color: var(--color-text-secondary);
+	}
+
+	.guide-content {
+		font-size: var(--font-size-lg);
+		line-height: var(--leading-relaxed);
+	}
+
+	.guide-content :global(p) { margin-bottom: 1.5em; }
+	.guide-content :global(h2) {
+		font-size: var(--font-size-2xl);
+		margin-top: 2.5em;
+		margin-bottom: 0.75em;
+		scroll-margin-top: calc(var(--nav-height) + var(--spacing-4));
+	}
+	.guide-content :global(h3) {
+		font-size: var(--font-size-xl);
+		margin-top: 2em;
+		margin-bottom: 0.5em;
+		scroll-margin-top: calc(var(--nav-height) + var(--spacing-4));
+	}
+	.guide-content :global(blockquote) {
+		margin: 2em 0;
+		padding: var(--spacing-4) var(--spacing-6);
+		border-left: 3px solid var(--color-border);
+		background: var(--color-bg-subtle);
+		border-radius: 0 var(--radius) var(--radius) 0;
+		color: var(--color-text-secondary);
+		font-style: italic;
+	}
+	.guide-content :global(pre) {
+		margin: 2em 0;
+		padding: var(--spacing-5);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		overflow-x: auto;
+		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+		line-height: 1.6;
+	}
+	.guide-content :global(code) {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		background: var(--color-surface);
+		padding: 0.2em 0.4em;
+		border-radius: var(--radius);
+	}
+	.guide-content :global(pre code) { background: none; padding: 0; }
+	.guide-content :global(ul),
+	.guide-content :global(ol) {
+		margin-bottom: 1.5em;
+		padding-left: 1.5em;
+	}
+	.guide-content :global(li) { margin-bottom: 0.5em; }
+	.guide-content :global(img) {
+		margin: 2em 0;
+		border-radius: var(--radius-lg);
+	}
+	.guide-content :global(hr) {
+		margin: 3em 0;
+		border: none;
+		border-top: 1px solid var(--color-border);
+	}
+	.guide-content :global(a) {
+		color: var(--color-accent);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+		text-decoration-thickness: 1px;
+	}
+	.guide-content :global(a:hover) { text-decoration-thickness: 2px; }
+
+	.guide-sidebar { display: block; }
+	.sidebar-sticky {
+		position: sticky;
+		top: calc(var(--nav-height) + var(--spacing-8));
+	}
+	.toc {
+		margin-bottom: var(--spacing-8);
+		padding-bottom: var(--spacing-6);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+	.toc-title {
+		font-size: var(--font-size-xs);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: var(--tracking-wide);
+		color: var(--color-muted);
+		margin-bottom: var(--spacing-3);
+	}
+	.toc-content :global(.toc-list) { list-style: none; padding: 0; margin: 0; }
+	.toc-content :global(.toc-item) { margin-bottom: var(--spacing-1); }
+	.toc-content :global(.toc-item--nested) { padding-left: var(--spacing-3); }
+	.toc-content :global(.toc-link) {
+		display: block;
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+		text-decoration: none;
+		padding: var(--spacing-1) 0;
+		transition: color var(--transition-fast);
+		line-height: var(--leading-snug);
+	}
+	.toc-content :global(.toc-link:hover),
+	.toc-content :global(.toc-link.active) { color: var(--color-text); }
+
+	@media (max-width: 1100px) {
+		.guide-grid {
+			grid-template-columns: minmax(0, var(--content-width));
+			gap: 0;
+		}
+		.guide-meta-col,
+		.guide-sidebar { display: none; }
+	}
+
+	@media (max-width: 900px) {
+		.guide-hero {
+			margin: var(--spacing-4) var(--spacing-4) var(--spacing-8);
+			border-radius: var(--radius);
+		}
+		.guide-grid { padding: 0 var(--spacing-4); }
+	}
+
+	@media (max-width: 600px) {
+		.guide-title { font-size: var(--font-size-3xl); }
+	}
+</style>

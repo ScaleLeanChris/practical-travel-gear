@@ -8,8 +8,8 @@
 	},
 
 	"settings": {
-		"title": "My Blog",
-		"tagline": "Thoughts on building for the web"
+		"title": "Practical Travel Gear",
+		"tagline": "Honest travel gear reviews and advice"
 	},
 
 	"collections": [
@@ -116,8 +116,18 @@
 			"label": "Primary Navigation",
 			"items": [
 				{ "type": "custom", "label": "Home", "url": "/" },
-				{ "type": "custom", "label": "About", "url": "/pages/about" },
-				{ "type": "custom", "label": "Posts", "url": "/posts" }
+				{ "type": "custom", "label": "About", "url": "/about" },
+				{ "type": "custom", "label": "Posts", "url": "/posts" },
+				{ "type": "custom", "label": "Guides", "url": "/guides" }
+			]
+		},
+		{
+			"name": "social",
+			"label": "Social Links",
+			"items": [
+				{ "type": "custom", "label": "Facebook", "url": "https://www.facebook.com/practicaltravelgear", "target": "_blank" },
+				{ "type": "custom", "label": "Instagram", "url": "https://www.instagram.com/practravelgear/", "target": "_blank" },
+				{ "type": "custom", "label": "RSS", "url": "/rss.xml" }
 			]
 		}
 	],
@@ -178,7 +188,7 @@
 							"children": [
 								{
 									"_type": "span",
-									"text": "A blog about software, design, and the occasional stray thought."
+									"text": "Practical Travel Gear provides honest reviews, buying guides, and travel tips."
 								}
 							]
 						}

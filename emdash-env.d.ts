@@ -5,6 +5,20 @@
 
 import type { ContentBylineCredit, PortableTextBlock } from "emdash";
 
+export interface Guide {
+  id: string;
+  slug: string | null;
+  status: string;
+  title: string;
+  featured_image?: { id: string; src?: string; alt?: string; width?: number; height?: number };
+  content?: PortableTextBlock[];
+  excerpt?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  bylines?: ContentBylineCredit[];
+}
+
 export interface Page {
   id: string;
   slug: string | null;
@@ -33,6 +47,7 @@ export interface Post {
 
 declare module "emdash" {
   interface EmDashCollections {
+    guides: Guide;
     pages: Page;
     posts: Post;
   }

@@ -9,6 +9,12 @@ if (!slug) {
 	return Astro.redirect("/404");
 }
 
+// If accessed directly (not via rewrite from catch-all),
+// 301 redirect to the canonical root-level URL
+if (!Astro.request.headers.get("X-Rewrite")) {
+	return Astro.redirect(`/${slug}`, 301);
+}
+
 const { entry: page, cacheHint } = await getEmDashEntry("pages", slug);
 
 if (!page) {

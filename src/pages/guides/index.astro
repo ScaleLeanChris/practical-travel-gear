@@ -1,0 +1,94 @@
+---
+import { getEmDashCollection, getEntryTerms } from "emdash";
+import Base from "../../layouts/Base.astro";
+import PostCard from "../../components/PostCard.astro";
+import { getReadingTime } from "../../utils/reading-time";
+
+const { entries: guides, cacheHint } = await getEmDashCollection("guides", {
+	orderBy: { published_at: "desc" },
+});
+
+Astro.cache.set(cacheHint);
+
+const guidesWithTags = await Promise.all(
+	guides.map(async (guide) => {
+		const tags = await getEntryTerms("guides", guide.data.id, "tag");
+		const bylines = guide.data.bylines ?? [];
+		return { guide, tags, bylines };
+	})
+);
+---
+
+<Base title="Travel Guides" description="In-depth travel gear buying guides and comparisons.">
+	<div class="guides-page">
+		<header class="page-header">
+			<h1 class="page-title">Travel Guides</h1>
+			<p class="page-description">
+				In-depth buying guides to help you find the best travel gear.
+				{guides.length} {guides.length === 1 ? "guide" : "guides"} available.
+			</p>
+		</header>
+
+		{guides.length === 0 ? (
+			<p class="empty">No guides yet.</p>
+		) : (
+			<div class="guides-grid">
+				{guidesWithTags.map(({ guide, tags, bylines }) => (
+					<PostCard
+						title={guide.data.title ?? "Untitled"}
+						excerpt={guide.data.excerpt}
+						featuredImage={guide.data.featured_image}
+						href={`/guides/${guide.id}`}
+						date={guide.data.publishedAt ?? undefined}
+						readingTime={getReadingTime(guide.data.content)}
+						tags={tags.map((t) => ({ slug: t.slug, label: t.label }))}
+						bylines={bylines}
+					/>
+				))}
+			</div>
+		)}
+	</div>
+</Base>
+
+<style>
+	.guides-page {
+		max-width: var(--wide-width);
+		margin: 0 auto;
+		padding: var(--spacing-16) var(--spacing-6);
+	}
+
+	.page-header {
+		margin-bottom: var(--spacing-10);
+	}
+
+	.page-title {
+		font-size: clamp(var(--font-size-2xl), 4vw, var(--font-size-4xl));
+		font-weight: 700;
+		line-height: var(--leading-tight);
+		margin-bottom: var(--spacing-2);
+	}
+
+	.page-description {
+		color: var(--color-muted);
+		font-size: var(--font-size-lg);
+	}
+
+	.guides-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: var(--spacing-8);
+	}
+
+	.empty {
+		color: var(--color-muted);
+		font-size: var(--font-size-lg);
+		padding: var(--spacing-16) 0;
+		text-align: center;
+	}
+
+	@media (max-width: 600px) {
+		.guides-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

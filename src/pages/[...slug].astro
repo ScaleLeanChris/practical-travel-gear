@@ -1,0 +1,53 @@
+---
+/**
+ * Catch-all route for WordPress-style root-level URLs.
+ *
+ * WordPress used /%postname%/ so posts live at /:slug.
+ * This route checks for a post first, then a page, and rewrites
+ * to the appropriate handler without changing the URL.
+ */
+import { getEmDashEntry } from "emdash";
+
+const slugSegments = Astro.params.slug;
+if (!slugSegments) {
+	return Astro.redirect("/404");
+}
+
+// For multi-segment paths like /2024/05/my-post (date-based WP URLs),
+// extract the last segment as the slug and 301 redirect to the canonical URL.
+const segments = slugSegments.split("/").filter(Boolean);
+if (segments.length > 1) {
+	const lastSegment = segments[segments.length - 1];
+	return Astro.redirect(`/${lastSegment}`, 301);
+}
+
+const slug = segments[0];
+
+// Build a rewrite request with a marker header so the target route
+// knows this is a rewrite (and won't redirect back here).
+function rewriteTo(path: string) {
+	const url = new URL(path, Astro.url.origin);
+	return Astro.rewrite(
+		new Request(url, {
+			headers: new Headers([
+				...Astro.request.headers.entries(),
+				["X-Rewrite", "1"],
+			]),
+		})
+	);
+}
+
+// Try post first (most common)
+const { entry: post } = await getEmDashEntry("posts", slug);
+if (post) {
+	return rewriteTo(`/posts/${slug}`);
+}
+
+// Try page
+const { entry: page } = await getEmDashEntry("pages", slug);
+if (page) {
+	return rewriteTo(`/pages/${slug}`);
+}
+
+return Astro.redirect("/404");
+---
