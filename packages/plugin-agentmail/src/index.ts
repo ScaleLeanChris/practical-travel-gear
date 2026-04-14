@@ -7,7 +7,7 @@ export function agentMailPlugin(): PluginDescriptor {
 		format: "standard",
 		entrypoint: "plugin-agentmail/sandbox",
 		options: {},
-		capabilities: ["email:provide", "network:fetch"],
+		capabilities: ["email:provide", "email:intercept", "network:fetch"],
 		allowedHosts: ["api.agentmail.to"],
 		adminPages: [
 			{ path: "/settings", label: "AgentMail Settings", icon: "mail" },
