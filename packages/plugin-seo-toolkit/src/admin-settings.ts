@@ -9,6 +9,10 @@ export async function buildSettingsPage(ctx: PluginContext) {
 	return {
 		blocks: [
 			{ type: "header", text: "SEO Settings" },
+			{
+				type: "context",
+				text: "Connect your DataForSEO account to track keyword rankings, backlinks, and broken inbound links.",
+			},
 			{ type: "divider" },
 			{
 				type: "form",
@@ -17,24 +21,27 @@ export async function buildSettingsPage(ctx: PluginContext) {
 					{
 						type: "text_input",
 						action_id: "dataforseoLogin",
-						label: "DataForSEO Login (email)",
+						label: "DataForSEO Login Email",
 						initial_value: login,
+						placeholder: "you@example.com",
 					},
 					{
 						type: "secret_input",
 						action_id: "dataforseoPassword",
-						label: "DataForSEO Password",
+						label: "DataForSEO API Password",
+						placeholder: "From app.dataforseo.com dashboard",
 					},
 					{
 						type: "text_input",
 						action_id: "domain",
-						label: "Target Domain",
+						label: "Your Domain (what DataForSEO tracks)",
 						initial_value: domain,
+						placeholder: "example.com",
 					},
 					{
 						type: "toggle",
 						action_id: "autoRefresh",
-						label: "Weekly Auto-Refresh",
+						label: "Auto-refresh data weekly (rankings, backlinks, audit)",
 						initial_value: autoRefresh,
 					},
 				],
@@ -50,21 +57,16 @@ export async function buildSettingsPage(ctx: PluginContext) {
 				],
 			},
 			{ type: "divider" },
+			{ type: "header", text: "Actions" },
 			{
-				type: "actions",
-				elements: [
-					{
-						type: "button",
-						text: "Refresh Data Now",
-						action_id: "refresh_data",
-						style: "primary",
-					},
-					{
-						type: "button",
-						text: "Run Content Audit",
-						action_id: "run_audit",
-					},
-				],
+				type: "section",
+				text: "**Fetch Rankings & Backlinks** — Pull the latest keyword rankings, backlink profile, and broken inbound links from DataForSEO. Uses 4-5 API calls.",
+				accessory: { type: "button", text: "Refresh Data", action_id: "refresh_data" },
+			},
+			{
+				type: "section",
+				text: "**Scan Content for SEO Issues** — Audit all published posts and pages for missing descriptions, thin content, duplicate titles, missing alt text, and more.",
+				accessory: { type: "button", text: "Run Audit", action_id: "run_audit" },
 			},
 		],
 	};
