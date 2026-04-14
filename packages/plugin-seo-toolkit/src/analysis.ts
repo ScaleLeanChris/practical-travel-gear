@@ -182,8 +182,10 @@ export async function analyzeContent(
 
 	// Keyword checks — only if DataForSEO cache has data for this URL
 	try {
-		const cached: any = await ctx.storage.domain_data.get("ranked_keywords");
-		if (cached?.data) {
+		const raw: any = await ctx.storage.domain_data.get("ranked_keywords");
+		// Handle both raw and wrapped storage shapes
+		const cached = raw?.data && typeof raw.data === "object" && "fetchedAt" in raw.data ? raw.data : raw;
+		if (cached?.data && Array.isArray(cached.data)) {
 			const slug = entry.slug ?? entry.id;
 			const entryKeywords = (cached.data as any[]).filter(
 				(kw: any) => kw.url && (kw.url.includes(`/${slug}`) || kw.url.endsWith(`/${slug}`)),

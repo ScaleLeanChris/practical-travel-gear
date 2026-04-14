@@ -247,27 +247,38 @@ export async function refreshDomainData(
 	return { calls, errors };
 }
 
+// Storage .get() may return the raw object or wrap it in { id, data }.
+// Handle both shapes.
+function unwrap(raw: any): any {
+	if (!raw) return null;
+	// If wrapped: { id: "...", data: { dataType, data, fetchedAt } }
+	if (raw.data && typeof raw.data === "object" && "fetchedAt" in raw.data) return raw.data;
+	// Raw: { dataType, data, fetchedAt }
+	if ("fetchedAt" in raw) return raw;
+	return raw;
+}
+
 export async function loadCachedDomainData(ctx: PluginContext): Promise<DomainDataCache> {
 	const cache: DomainDataCache = {};
 
 	try {
-		const rk: any = await ctx.storage.domain_data.get("ranked_keywords");
-		if (rk) cache.rankedKeywords = { data: rk.data, fetchedAt: rk.fetchedAt };
+		const rk = unwrap(await ctx.storage.domain_data.get("ranked_keywords"));
+		if (rk?.data) cache.rankedKeywords = { data: rk.data, fetchedAt: rk.fetchedAt };
 	} catch {}
 
 	try {
-		const bs: any = await ctx.storage.domain_data.get("backlink_summary");
-		if (bs) cache.backlinkSummary = { data: bs.data, fetchedAt: bs.fetchedAt };
+		const bs = unwrap(await ctx.storage.domain_data.get("backlink_summary"));
+		if (bs?.data) cache.backlinkSummary = { data: bs.data, fetchedAt: bs.fetchedAt };
 	} catch {}
 
 	try {
-		const rd: any = await ctx.storage.domain_data.get("referring_domains");
-		if (rd) cache.referringDomains = { data: rd.data, fetchedAt: rd.fetchedAt };
+		const rd = unwrap(await ctx.storage.domain_data.get("referring_domains"));
+		if (rd?.data) cache.referringDomains = { data: rd.data, fetchedAt: rd.fetchedAt };
 	} catch {}
 
 	try {
-		const bb: any = await ctx.storage.domain_data.get("broken_backlinks");
-		if (bb) cache.brokenBacklinks = { data: bb.data, fetchedAt: bb.fetchedAt };
+		const bb = unwrap(await ctx.storage.domain_data.get("broken_backlinks"));
+		if (bb?.data) cache.brokenBacklinks = { data: bb.data, fetchedAt: bb.fetchedAt };
 	} catch {}
 
 	return cache;

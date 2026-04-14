@@ -8,12 +8,17 @@ function trafficLight(score: number): string {
 }
 
 export async function buildDashboardPage(ctx: PluginContext) {
-	const auditData = await ctx.storage.audit_results.query({
-		orderBy: { score: "asc" },
-		limit: 200,
-	});
-
-	const results: AuditResult[] = auditData.items.map((item: any) => item.data ?? item);
+	let results: AuditResult[] = [];
+	try {
+		const auditData: any = await ctx.storage.audit_results.query({
+			orderBy: { score: "asc" },
+			limit: 200,
+		});
+		const items = auditData?.items ?? [];
+		results = items.map((item: any) => item.data ?? item);
+	} catch (err) {
+		// Storage may not have data yet
+	}
 
 	if (results.length === 0) {
 		return {
