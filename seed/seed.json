@@ -49,7 +49,7 @@
 			"slug": "pages",
 			"label": "Pages",
 			"labelSingular": "Page",
-			"supports": ["drafts", "revisions", "search"],
+			"supports": ["drafts", "revisions", "search", "seo"],
 			"fields": [
 				{
 					"slug": "title",
@@ -127,6 +127,7 @@
 			"items": [
 				{ "type": "custom", "label": "Facebook", "url": "https://www.facebook.com/practicaltravelgear", "target": "_blank" },
 				{ "type": "custom", "label": "Instagram", "url": "https://www.instagram.com/practravelgear/", "target": "_blank" },
+				{ "type": "custom", "label": "Pinterest", "url": "https://www.pinterest.com/practicaltr0284/", "target": "_blank" },
 				{ "type": "custom", "label": "RSS", "url": "/rss.xml" }
 			]
 		}
