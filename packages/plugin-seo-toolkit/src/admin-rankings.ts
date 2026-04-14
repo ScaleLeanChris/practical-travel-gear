@@ -2,47 +2,62 @@ import type { PluginContext } from "emdash";
 import { loadCachedDomainData } from "./dataforseo.js";
 
 export async function buildRankingsPage(ctx: PluginContext) {
-	const cached = await loadCachedDomainData(ctx);
+	let cached;
+	try {
+		cached = await loadCachedDomainData(ctx);
+	} catch {
+		cached = {};
+	}
 
-	if (!cached.rankedKeywords?.data?.length) {
+	const keywords = Array.isArray(cached.rankedKeywords?.data)
+		? cached.rankedKeywords!.data
+		: [];
+
+	if (keywords.length === 0) {
 		return {
 			blocks: [
 				{ type: "header", text: "Rankings" },
 				{
 					type: "context",
-					text: "No ranking data yet. Configure DataForSEO credentials in **SEO Settings** and click **Refresh Data Now**.",
+					text: "No ranking data yet. Configure DataForSEO credentials in SEO Settings and click Fetch Rankings & Backlinks.",
 				},
 			],
 		};
 	}
 
-	const keywords = cached.rankedKeywords.data
-		.sort((a, b) => b.searchVolume - a.searchVolume)
+	const sorted = [...keywords]
+		.sort((a, b) => (b.searchVolume ?? 0) - (a.searchVolume ?? 0))
 		.slice(0, 100);
 
-	const rows = keywords.map((kw) => ({
-		keyword: kw.keyword,
-		position: String(kw.position),
-		volume: String(kw.searchVolume),
-		url: kw.url,
-		cpc: `$${kw.cpc.toFixed(2)}`,
+	const rows = sorted.map((kw) => ({
+		keyword: kw.keyword ?? "",
+		position: String(kw.position ?? 0),
+		volume: String(kw.searchVolume ?? 0),
+		url: kw.url ?? "",
+		cpc: `$${(kw.cpc ?? 0).toFixed(2)}`,
 	}));
 
-	return {
-		blocks: [
-			{ type: "header", text: "Rankings" },
-			{
-				type: "context",
-				text: `Showing top ${rows.length} keywords by search volume. Last updated: ${cached.rankedKeywords.fetchedAt ?? "unknown"}`,
-			},
-			{
-				type: "stats",
-				stats: [
-					{ label: "Tracked Keywords", value: String(cached.rankedKeywords.data.length) },
-					{ label: "Top 10 Keywords", value: String(cached.rankedKeywords.data.filter((k) => k.position <= 10).length) },
-					{ label: "Top 3 Keywords", value: String(cached.rankedKeywords.data.filter((k) => k.position <= 3).length) },
-				],
-			},
+	const top10 = keywords.filter((k) => (k.position ?? 999) <= 10).length;
+	const top3 = keywords.filter((k) => (k.position ?? 999) <= 3).length;
+
+	const blocks: any[] = [
+		{ type: "header", text: "Rankings" },
+		{
+			type: "context",
+			text: `Showing top ${rows.length} of ${keywords.length} keywords by search volume. Last updated: ${cached.rankedKeywords?.fetchedAt ?? "unknown"}`,
+		},
+		{
+			type: "fields",
+			fields: [
+				{ label: "Tracked Keywords", value: String(keywords.length) },
+				{ label: "Top 10", value: String(top10) },
+				{ label: "Top 3", value: String(top3) },
+			],
+		},
+	];
+
+	if (rows.length > 0) {
+		blocks.push(
 			{ type: "divider" },
 			{
 				type: "table",
@@ -56,6 +71,8 @@ export async function buildRankingsPage(ctx: PluginContext) {
 				],
 				rows,
 			},
-		],
-	};
+		);
+	}
+
+	return { blocks };
 }

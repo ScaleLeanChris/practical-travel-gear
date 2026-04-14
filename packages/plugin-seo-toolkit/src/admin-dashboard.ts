@@ -11,12 +11,24 @@ export async function buildDashboardPage(ctx: PluginContext) {
 	let results: AuditResult[] = [];
 	try {
 		const auditData: any = await ctx.storage.audit_results.query({
-			orderBy: { score: "asc" },
 			limit: 200,
 		});
-		const items = auditData?.items ?? [];
-		results = items.map((item: any) => item.data ?? item);
-	} catch (err) {
+		const items: any[] = auditData?.items ?? [];
+		results = items
+			.map((item: any) => {
+				const r = item?.data ?? item;
+				return {
+					entryId: r?.entryId ?? "",
+					collection: r?.collection ?? "",
+					slug: r?.slug ?? "",
+					title: r?.title ?? "(untitled)",
+					score: typeof r?.score === "number" ? r.score : 0,
+					issues: Array.isArray(r?.issues) ? r.issues : [],
+					lastAudit: r?.lastAudit ?? "",
+				} as AuditResult;
+			})
+			.sort((a, b) => a.score - b.score);
+	} catch {
 		// Storage may not have data yet
 	}
 
@@ -26,7 +38,7 @@ export async function buildDashboardPage(ctx: PluginContext) {
 				{ type: "header", text: "SEO Dashboard" },
 				{
 					type: "context",
-					text: "No audit data yet. Go to SEO Settings and click **Run Content Audit** to scan your content.",
+					text: "No audit data yet. Go to SEO Settings and click Run Content Audit to scan your content.",
 				},
 			],
 		};
@@ -34,6 +46,10 @@ export async function buildDashboardPage(ctx: PluginContext) {
 
 	const totalScore = results.reduce((sum, r) => sum + r.score, 0);
 	const avgScore = Math.round(totalScore / results.length);
+	const totalIssues = results.reduce(
+		(sum, r) => sum + r.issues.length,
+		0,
+	);
 
 	const issueCounts: Record<string, number> = {};
 	for (const result of results) {
@@ -56,22 +72,22 @@ export async function buildDashboardPage(ctx: PluginContext) {
 		issues: String(r.issues.length),
 	}));
 
-	return {
-		blocks: [
-			{ type: "header", text: "SEO Dashboard" },
-			{
-				type: "stats",
-				stats: [
-					{ label: "Site Health", value: `${trafficLight(avgScore)} ${avgScore}/100` },
-					{ label: "Entries Scanned", value: String(results.length) },
-					{
-						label: "Issues Found",
-						value: String(results.reduce((sum, r) => sum + r.issues.length, 0)),
-					},
-				],
-			},
+	const blocks: any[] = [
+		{ type: "header", text: "SEO Dashboard" },
+		{
+			type: "fields",
+			fields: [
+				{ label: "Site Health", value: `${trafficLight(avgScore)} ${avgScore}/100` },
+				{ label: "Entries Scanned", value: String(results.length) },
+				{ label: "Issues Found", value: String(totalIssues) },
+			],
+		},
+	];
+
+	if (issueRows.length > 0) {
+		blocks.push(
 			{ type: "divider" },
-			{ type: "section", text: "**Issues by Type**" },
+			{ type: "header", text: "Issues by Type" },
 			{
 				type: "table",
 				blockId: "issue-breakdown",
@@ -81,8 +97,13 @@ export async function buildDashboardPage(ctx: PluginContext) {
 				],
 				rows: issueRows,
 			},
+		);
+	}
+
+	if (entryRows.length > 0) {
+		blocks.push(
 			{ type: "divider" },
-			{ type: "section", text: "**Content Scores** (worst first)" },
+			{ type: "header", text: "Content Scores (worst first)" },
 			{
 				type: "table",
 				blockId: "entry-scores",
@@ -94,6 +115,8 @@ export async function buildDashboardPage(ctx: PluginContext) {
 				],
 				rows: entryRows,
 			},
-		],
-	};
+		);
+	}
+
+	return { blocks };
 }
