@@ -3,26 +3,35 @@
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
+	"workspaces": [
+		"packages/*"
+	],
 	"scripts": {
 		"dev": "astro dev",
 		"build": "astro build",
 		"preview": "astro preview",
 		"deploy": "wrangler deploy",
-		"typecheck": "astro check" 
+		"typecheck": "astro check"
 	},
 	"dependencies": {
 		"@astrojs/cloudflare": "^13.1.6",
 		"@astrojs/react": "^5.0.0",
-		"@emdash-cms/cloudflare": "^0.0.3",
-		"@emdash-cms/plugin-forms": "^0.0.3",
-		"@emdash-cms/plugin-webhook-notifier": "^0.0.3",
+		"@emdash-cms/cloudflare": "^0.5.0",
+		"@emdash-cms/plugin-forms": "^0.1.1",
+		"@emdash-cms/plugin-webhook-notifier": "^0.1.2",
+		"@tiptap/extension-collaboration": "^3.22.3",
+		"@tiptap/y-tiptap": "^3.0.3",
 		"astro": "^6.1.2",
-		"emdash": "^0.0.3",
+		"emdash": "^0.5.0",
+		"plugin-agentmail": "*",
 		"react": "^19.2.4",
-		"react-dom": "^19.2.4"
+		"react-dom": "^19.2.4",
+		"typescript": "^6.0.2",
+		"y-protocols": "^1.0.7",
+		"yjs": "^13.6.30"
 	},
 	"devDependencies": {
-		"@astrojs/check": "^0.9.7",
+		"@astrojs/check": "^0.9.8",
 		"@cloudflare/workers-types": "^4.20260401.1",
 		"wrangler": "^4.79.0"
 	}
