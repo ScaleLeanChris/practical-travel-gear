@@ -1,8 +1,16 @@
 import type { PluginContext } from "emdash";
 import { loadCachedDomainData } from "./dataforseo.js";
 
+function extractPath(url: string): string {
+	try {
+		return new URL(url).pathname;
+	} catch {
+		return url;
+	}
+}
+
 export async function buildBacklinksPage(ctx: PluginContext) {
-	let cached;
+	let cached: any;
 	try {
 		cached = await loadCachedDomainData(ctx);
 	} catch {
@@ -22,6 +30,25 @@ export async function buildBacklinksPage(ctx: PluginContext) {
 		};
 	}
 
+	// Get known slugs to check if backlink targets exist
+	const knownPaths = new Set<string>();
+	try {
+		for (const collection of ["posts", "pages"]) {
+			const result: any = await ctx.content!.list(collection, {
+				where: { status: "published" },
+				limit: 1000,
+			});
+			const items = result?.items ?? [];
+			for (const entry of items) {
+				const slug = (entry as any).slug ?? (entry as any).id;
+				knownPaths.add(`/${slug}`);
+				knownPaths.add(`/${collection}/${slug}`);
+			}
+		}
+	} catch {
+		// Content API may not be available
+	}
+
 	const domains = Array.isArray(cached.referringDomains?.data)
 		? cached.referringDomains!.data
 		: [];
@@ -35,11 +62,18 @@ export async function buildBacklinksPage(ctx: PluginContext) {
 		rank: String(d.rank ?? 0),
 	}));
 
-	const brokenRows = broken.slice(0, 50).map((b: any) => ({
-		deadUrl: b.targetUrl ?? "",
-		source: b.sourceDomain ?? "",
-		anchor: b.anchor ?? "",
-	}));
+	// For broken backlinks: show the target path, source, and status
+	const brokenRows = broken.slice(0, 50).map((b: any) => {
+		const targetPath = extractPath(b.targetUrl ?? "");
+		const exists = knownPaths.has(targetPath);
+		return {
+			targetPath,
+			status: exists ? "Page exists (URL changed?)" : "404 — needs redirect",
+			source: b.sourceDomain ?? "",
+			sourceUrl: b.sourceUrl ?? "",
+			anchor: b.anchor ?? "",
+		};
+	});
 
 	const blocks: any[] = [
 		{ type: "header", text: "Backlinks" },
@@ -84,17 +118,26 @@ export async function buildBacklinksPage(ctx: PluginContext) {
 			},
 			{
 				type: "context",
-				text: "External sites linking to pages that no longer exist on your site. Set up redirects for these.",
+				text: "External sites are linking to these URLs on your site, but the pages return 404. Set up redirects to preserve link equity.",
 			},
 			{
 				type: "table",
 				blockId: "broken-backlinks",
 				columns: [
-					{ key: "deadUrl", label: "Dead URL (Your Site)", format: "text" },
+					{ key: "targetPath", label: "Your URL (404)", format: "text" },
+					{ key: "status", label: "Status", format: "badge" },
 					{ key: "source", label: "Linking Domain", format: "text" },
 					{ key: "anchor", label: "Anchor Text", format: "text" },
 				],
 				rows: brokenRows,
+			},
+		);
+	} else {
+		blocks.push(
+			{ type: "divider" },
+			{
+				type: "context",
+				text: "No broken inbound links detected. All external links point to live pages.",
 			},
 		);
 	}
