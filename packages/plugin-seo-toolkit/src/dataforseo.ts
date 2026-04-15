@@ -416,7 +416,7 @@ export async function loadPreviousWeekRanking(
 ): Promise<RankingSnapshot | null> {
 	const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 	try {
-		const raw = await ctx.storage.ranking_history.get(`${keyword}:${lastWeek}`);
+		const raw: any = await ctx.storage.ranking_history.get(`${keyword}:${lastWeek}`);
 		const d = raw?.data ?? raw;
 		if (!d?.position) return null;
 		return {
