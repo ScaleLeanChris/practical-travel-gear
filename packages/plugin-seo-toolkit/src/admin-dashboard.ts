@@ -131,24 +131,29 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
   const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
   const top50 = results.slice(0, 50);
 
-  // Fetch content metadata (author, status, dates) for display
-  const entryMeta = new Map<string, { author: string; status: string; date: string }>();
+  // Fetch content metadata (status, dates) via list() — fields are top-level on entries
+  const entryMeta = new Map<string, { status: string; date: string }>();
   if (ctx.content) {
-    for (const r of top50) {
+    const collections = [...new Set(top50.map((r) => r.collection))];
+    for (const collection of collections) {
       try {
-        const entry: any = await ctx.content.get(r.collection, r.entryId);
-        const d = entry?.data;
-        // Bylines are auto-hydrated — each has .name at the top level
-        const byline = d?.bylines?.[0]?.name ?? "";
-        const status = d?.status ?? "";
-        const date = d?.published_at ?? d?.created_at ?? "";
-        const shortDate = date ? new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
-        entryMeta.set(r.entryId, { author: byline, status, date: shortDate });
+        let cursor: string | undefined;
+        do {
+          const result: any = await ctx.content.list(collection, { limit: 200, cursor });
+          for (const entry of result?.items ?? []) {
+            const status = entry.status ?? "";
+            const date = entry.publishedAt ?? entry.createdAt ?? "";
+            const shortDate = date ? new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+            entryMeta.set(entry.id, { status, date: shortDate });
+          }
+          cursor = result?.cursor;
+        } while (cursor);
       } catch {
         // Content may not be accessible
       }
     }
   }
+
 
   if (top50.length > 0) {
     const entryRows = top50.map((r) => {
@@ -160,7 +165,6 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
         score: String(r.score),
         issues: String(r.issues.length),
         status: meta?.status ?? "",
-        author: meta?.author ?? "",
         date: meta?.date ?? "",
       };
     });
@@ -176,7 +180,6 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
           { key: "score", label: "Score", format: "text" },
           { key: "issues", label: "Issues", format: "text" },
           { key: "status", label: "Status", format: "text" },
-          { key: "author", label: "Author", format: "text" },
           { key: "date", label: "Date", format: "text" },
         ],
         rows: entryRows,
