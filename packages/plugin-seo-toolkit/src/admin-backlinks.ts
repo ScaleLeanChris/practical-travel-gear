@@ -126,7 +126,7 @@ function buildLinksSubTab(cached: any, knownPaths: Set<string>): any[] {
     }
 
     return {
-      source: b.domainFrom ?? b.urlFrom ?? "",
+      source: b.urlFrom ?? b.domainFrom ?? "",
       target: targetPath,
       anchor: b.anchor ?? "",
       type: b.dofollow ? "dofollow" : "nofollow",
