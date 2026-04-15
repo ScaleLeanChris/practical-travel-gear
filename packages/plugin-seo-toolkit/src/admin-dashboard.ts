@@ -126,7 +126,8 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
   }
 
-  // Entry scores table
+  // Entry scores table with HyperAgent actions
+  const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
   const entryRows = results.slice(0, 50).map((r) => ({
     title: r.title,
     collection: r.collection,
@@ -150,6 +151,34 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
         rows: entryRows,
       },
     );
+
+    // Per-entry HyperAgent buttons below the table
+    if (hasHyperagent) {
+      const lowScoreEntries = results.slice(0, 50).filter((r) => r.score < 70);
+      if (lowScoreEntries.length > 0) {
+        blocks.push(
+          { type: "divider" },
+          {
+            type: "section",
+            text: `**Send to HyperAgent** — ${lowScoreEntries.length} entries scoring below 70`,
+          },
+          {
+            type: "actions",
+            elements: lowScoreEntries.slice(0, 10).map((r) => ({
+              type: "button",
+              label: `${r.title} (${r.score})`,
+              action_id: `hyperagent:${r.collection}:${r.entryId}`,
+              style: "default",
+            })),
+          },
+        );
+      }
+    } else {
+      blocks.push({
+        type: "context",
+        text: "Add a HyperAgent webhook in Settings to send low-scoring content for SEO review.",
+      });
+    }
   }
 
   return blocks;

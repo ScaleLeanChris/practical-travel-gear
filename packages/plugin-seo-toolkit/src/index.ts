@@ -8,7 +8,7 @@ export function seoToolkitPlugin(): PluginDescriptor {
 		entrypoint: "plugin-seo-toolkit/sandbox",
 		options: {},
 		capabilities: ["read:content", "read:media", "network:fetch"],
-		allowedHosts: ["api.dataforseo.com"],
+		allowedHosts: ["api.dataforseo.com", "hyperagent.com", "*.hyperagent.com"],
 		storage: {
 			audit_results: {
 				indexes: ["entryId", "collection", "score", "lastAudit"],

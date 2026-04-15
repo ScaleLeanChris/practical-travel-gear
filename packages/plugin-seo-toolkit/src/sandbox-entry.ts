@@ -14,6 +14,97 @@ async function getDomain(ctx: PluginContext): Promise<string> {
   return (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
 }
 
+async function sendToHyperagent(ctx: PluginContext, collection: string, entryId: string) {
+  const webhookUrl = await ctx.kv.get<string>("settings:hyperagentWebhookUrl");
+  const webhookSecret = await ctx.kv.get<string>("settings:hyperagentWebhookSecret");
+
+  if (!webhookUrl || !ctx.http) {
+    return {
+      ...(await renderTab(ctx, "dashboard")),
+      toast: { message: "HyperAgent webhook not configured — add it in Settings", type: "error" as const },
+    };
+  }
+
+  // Look up the entry from audit results
+  let title = entryId;
+  let slug = entryId;
+  let description = "";
+  let score = 0;
+  let issues: string[] = [];
+  try {
+    const auditData: any = await ctx.storage.audit_results.query({
+      where: { entryId },
+      limit: 1,
+    });
+    const item = auditData?.items?.[0];
+    const r = item?.data ?? item;
+    if (r) {
+      title = r.title ?? entryId;
+      slug = r.slug ?? entryId;
+      score = r.score ?? 0;
+      issues = Array.isArray(r.issues) ? r.issues.map((i: any) => i.check ?? i.message ?? String(i)) : [];
+    }
+  } catch {
+    // Use defaults
+  }
+
+  // Try to get description from content API
+  try {
+    if (ctx.content) {
+      const entry: any = await ctx.content.get(collection, entryId);
+      description = entry?.data?.description ?? entry?.data?.excerpt ?? entry?.data?.seo_description ?? "";
+    }
+  } catch {
+    // Content API may not be available
+  }
+
+  const domain = await getDomain(ctx);
+  const url = `https://${domain}/${slug.replace(/^\/+/, "")}`;
+
+  const message = [
+    `SEO review requested for "${title}"`,
+    "",
+    `Post ID: ${entryId}`,
+    `Collection: ${collection}`,
+    `URL: ${url}`,
+    description ? `Description: ${description}` : null,
+    "",
+    `Current SEO score: ${score}/100`,
+    issues.length > 0 ? `Issues: ${issues.join(", ")}` : null,
+  ].filter((line) => line !== null).join("\n");
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (webhookSecret) {
+    headers["X-Hyperagent-Webhook-Secret"] = webhookSecret;
+  }
+
+  try {
+    const response = await ctx.http.fetch(webhookUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ message }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        ...(await renderTab(ctx, "dashboard")),
+        toast: { message: `HyperAgent returned ${response.status}: ${text.slice(0, 100)}`, type: "error" as const },
+      };
+    }
+
+    return {
+      ...(await renderTab(ctx, "dashboard")),
+      toast: { message: `Sent "${title}" to HyperAgent for SEO review`, type: "success" as const },
+    };
+  } catch (err) {
+    return {
+      ...(await renderTab(ctx, "dashboard")),
+      toast: { message: `HyperAgent request failed: ${err instanceof Error ? err.message : String(err)}`, type: "error" as const },
+    };
+  }
+}
+
 async function renderTab(ctx: PluginContext, tab: Tab, subTab?: BacklinksSubTab): Promise<any> {
   let tabBlocks: any[];
   switch (tab) {
@@ -149,6 +240,14 @@ export default definePlugin({
                 },
               };
             }
+          }
+
+          // Send to HyperAgent
+          if (actionId.startsWith("hyperagent:")) {
+            const parts = actionId.slice("hyperagent:".length).split(":");
+            const collection = parts[0];
+            const entryId = parts.slice(1).join(":");
+            return sendToHyperagent(ctx, collection, entryId);
           }
 
           // Run content audit (from dashboard tab)
