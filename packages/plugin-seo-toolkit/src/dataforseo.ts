@@ -72,6 +72,16 @@ export interface BrokenBacklink {
 	redirectTarget: string | null;
 }
 
+export interface IndividualBacklink {
+	urlFrom: string;
+	domainFrom: string;
+	urlTo: string;
+	anchor: string;
+	dofollow: boolean;
+	isBroken: boolean;
+	redirectUrl: string | null;
+}
+
 export async function fetchRankedKeywords(
 	ctx: PluginContext,
 	domain: string,
@@ -168,11 +178,39 @@ export async function fetchBrokenBacklinks(
 	}));
 }
 
+export async function fetchIndividualBacklinks(
+	ctx: PluginContext,
+	domain: string,
+): Promise<IndividualBacklink[]> {
+	const creds = await getCredentials(ctx);
+	if (!creds) throw new Error("DataForSEO credentials not configured");
+
+	const data = await apiCall(ctx, creds, "backlinks/backlinks/live", [
+		{
+			target: domain,
+			limit: 1000,
+			order_by: ["rank,desc"],
+		},
+	]);
+
+	const items = data?.tasks?.[0]?.result?.[0]?.items ?? [];
+	return items.map((item: any) => ({
+		urlFrom: item.url_from ?? "",
+		domainFrom: item.domain_from ?? "",
+		urlTo: item.url_to ?? "",
+		anchor: item.anchor ?? "",
+		dofollow: item.dofollow ?? false,
+		isBroken: item.is_broken ?? false,
+		redirectUrl: item.url_to_redirect_target ?? null,
+	}));
+}
+
 export interface DomainDataCache {
 	rankedKeywords?: { data: RankedKeyword[]; fetchedAt: string };
 	backlinkSummary?: { data: BacklinkSummary; fetchedAt: string };
 	referringDomains?: { data: ReferringDomain[]; fetchedAt: string };
 	brokenBacklinks?: { data: BrokenBacklink[]; fetchedAt: string };
+	individualBacklinks?: { data: IndividualBacklink[]; fetchedAt: string };
 }
 
 function isStale(fetchedAt: string | undefined, maxAgeMs: number): boolean {
@@ -190,6 +228,11 @@ export async function refreshDomainData(
 	const errors: string[] = [];
 	const cached = await loadCachedDomainData(ctx);
 
+	// Save previous backlink summary for trend comparison
+	if (cached.backlinkSummary?.data) {
+		await ctx.kv.set("prev_backlink_summary", cached.backlinkSummary.data);
+	}
+
 	if (isStale(cached.rankedKeywords?.fetchedAt, ONE_DAY_MS)) {
 		try {
 			const data = await fetchRankedKeywords(ctx, domain);
@@ -199,6 +242,32 @@ export async function refreshDomainData(
 				fetchedAt: new Date().toISOString(),
 			});
 			calls++;
+			// Write ranking history snapshots
+			const today = new Date().toISOString().slice(0, 10);
+			for (const kw of data) {
+				await ctx.storage.ranking_history.put(`${kw.keyword}:${today}`, {
+					keyword: kw.keyword,
+					position: kw.position,
+					searchVolume: kw.searchVolume,
+					url: kw.url,
+					competition: kw.competition,
+					cpc: kw.cpc,
+					fetchedAt: today,
+				});
+			}
+			// Prune records older than 84 days
+			const cutoff = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+			try {
+				const old: any = await ctx.storage.ranking_history.query({
+					where: { fetchedAt: { lt: cutoff } },
+					limit: 5000,
+				});
+				for (const item of old?.items ?? []) {
+					await ctx.storage.ranking_history.delete(item.id ?? item.key);
+				}
+			} catch {
+				// Prune is best-effort
+			}
 		} catch (err) {
 			errors.push(`Ranked keywords: ${err instanceof Error ? err.message : String(err)}`);
 		}
@@ -246,6 +315,20 @@ export async function refreshDomainData(
 		}
 	}
 
+	if (isStale(cached.individualBacklinks?.fetchedAt, ONE_DAY_MS)) {
+		try {
+			const data = await fetchIndividualBacklinks(ctx, domain);
+			await ctx.storage.domain_data.put("individual_backlinks", {
+				dataType: "individual_backlinks",
+				data,
+				fetchedAt: new Date().toISOString(),
+			});
+			calls++;
+		} catch (err) {
+			errors.push(`Individual backlinks: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
 	return { calls, errors };
 }
 
@@ -283,5 +366,69 @@ export async function loadCachedDomainData(ctx: PluginContext): Promise<DomainDa
 		if (bb?.data) cache.brokenBacklinks = { data: bb.data, fetchedAt: bb.fetchedAt };
 	} catch {}
 
+	try {
+		const ib = unwrap(await ctx.storage.domain_data.get("individual_backlinks"));
+		if (ib?.data) cache.individualBacklinks = { data: ib.data, fetchedAt: ib.fetchedAt };
+	} catch {}
+
 	return cache;
+}
+
+export interface RankingSnapshot {
+	keyword: string;
+	position: number;
+	searchVolume: number;
+	url: string;
+	competition: number;
+	cpc: number;
+	fetchedAt: string;
+}
+
+export async function loadRankingHistory(
+	ctx: PluginContext,
+	keyword: string,
+): Promise<RankingSnapshot[]> {
+	try {
+		const result: any = await ctx.storage.ranking_history.query({
+			where: { keyword },
+			limit: 100,
+		});
+		return (result?.items ?? []).map((item: any) => {
+			const d = item?.data ?? item;
+			return {
+				keyword: d.keyword ?? keyword,
+				position: d.position ?? 0,
+				searchVolume: d.searchVolume ?? 0,
+				url: d.url ?? "",
+				competition: d.competition ?? 0,
+				cpc: d.cpc ?? 0,
+				fetchedAt: d.fetchedAt ?? "",
+			} as RankingSnapshot;
+		}).sort((a: RankingSnapshot, b: RankingSnapshot) => a.fetchedAt.localeCompare(b.fetchedAt));
+	} catch {
+		return [];
+	}
+}
+
+export async function loadPreviousWeekRanking(
+	ctx: PluginContext,
+	keyword: string,
+): Promise<RankingSnapshot | null> {
+	const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+	try {
+		const raw = await ctx.storage.ranking_history.get(`${keyword}:${lastWeek}`);
+		const d = raw?.data ?? raw;
+		if (!d?.position) return null;
+		return {
+			keyword: d.keyword ?? keyword,
+			position: d.position,
+			searchVolume: d.searchVolume ?? 0,
+			url: d.url ?? "",
+			competition: d.competition ?? 0,
+			cpc: d.cpc ?? 0,
+			fetchedAt: d.fetchedAt ?? lastWeek,
+		};
+	} catch {
+		return null;
+	}
 }
