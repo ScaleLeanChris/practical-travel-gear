@@ -128,7 +128,26 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
 
   // Entry scores with inline SEO Agent actions
   const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
+  const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
   const top50 = results.slice(0, 50);
+
+  // Fetch content metadata (author, status, dates) for display
+  const entryMeta = new Map<string, { author: string; status: string; date: string }>();
+  if (ctx.content) {
+    for (const r of top50) {
+      try {
+        const entry: any = await ctx.content.get(r.collection, r.entryId);
+        const d = entry?.data;
+        const byline = d?.bylines?.[0]?.name ?? d?.bylines?.[0]?.data?.name ?? "";
+        const status = d?.status ?? "unknown";
+        const date = d?.published_at ?? d?.created_at ?? d?.updatedAt ?? "";
+        const shortDate = date ? new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
+        entryMeta.set(r.entryId, { author: byline, status, date: shortDate });
+      } catch {
+        // Content may not be accessible
+      }
+    }
+  }
 
   if (top50.length > 0) {
     blocks.push(
@@ -137,13 +156,24 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
 
     for (const r of top50) {
+      const meta = entryMeta.get(r.entryId);
+      const url = `https://${domain}/${r.slug.replace(/^\/+/, "")}`;
       const accessory = hasHyperagent && r.score < 70
         ? { type: "button", label: "Send to SEO Agent", action_id: `hyperagent:${r.collection}:${r.entryId}`, style: "primary" }
         : undefined;
 
+      const parts = [
+        `**[${r.title}](${url})**`,
+        `Score: ${r.score}`,
+        `${r.issues.length} issue${r.issues.length === 1 ? "" : "s"}`,
+        meta?.status ? `Status: ${meta.status}` : null,
+        meta?.author ? `By: ${meta.author}` : null,
+        meta?.date ? meta.date : null,
+      ].filter(Boolean).join(" — ");
+
       blocks.push({
         type: "section",
-        text: `**${r.title}** — ${r.collection} — Score: ${r.score} — ${r.issues.length} issue${r.issues.length === 1 ? "" : "s"}`,
+        text: parts,
         ...(accessory ? { accessory } : {}),
       });
     }
