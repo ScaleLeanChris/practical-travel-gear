@@ -49,14 +49,14 @@ export async function buildSettingsTab(ctx: PluginContext): Promise<any[]> {
 				{
 					type: "text_input",
 					action_id: "hyperagentWebhookUrl",
-					label: "HyperAgent Webhook URL",
+					label: "SEO Agent — Webhook URL",
 					initial_value: hyperagentWebhookUrl,
 					placeholder: "https://hyperagent.com/api/webhooks/.../receive",
 				},
 				{
 					type: "secret_input",
 					action_id: "hyperagentWebhookSecret",
-					label: hasWebhookSecret ? "HyperAgent Webhook Secret (saved)" : "HyperAgent Webhook Secret",
+					label: hasWebhookSecret ? "SEO Agent — Webhook Secret (saved)" : "SEO Agent — Webhook Secret",
 					placeholder: hasWebhookSecret ? "Secret saved — leave blank to keep" : "From HyperAgent webhook settings",
 				},
 			],

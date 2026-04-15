@@ -21,7 +21,7 @@ async function sendToHyperagent(ctx: PluginContext, collection: string, entryId:
   if (!webhookUrl || !ctx.http) {
     return {
       ...(await renderTab(ctx, "dashboard")),
-      toast: { message: "HyperAgent webhook not configured — add it in Settings", type: "error" as const },
+      toast: { message: "SEO Agent webhook not configured — add it in Settings", type: "error" as const },
     };
   }
 
@@ -89,18 +89,18 @@ async function sendToHyperagent(ctx: PluginContext, collection: string, entryId:
       const text = await response.text();
       return {
         ...(await renderTab(ctx, "dashboard")),
-        toast: { message: `HyperAgent returned ${response.status}: ${text.slice(0, 100)}`, type: "error" as const },
+        toast: { message: `SEO Agent returned ${response.status}: ${text.slice(0, 100)}`, type: "error" as const },
       };
     }
 
     return {
       ...(await renderTab(ctx, "dashboard")),
-      toast: { message: `Sent "${title}" to HyperAgent for SEO review`, type: "success" as const },
+      toast: { message: `Sent "${title}" to SEO Agent`, type: "success" as const },
     };
   } catch (err) {
     return {
       ...(await renderTab(ctx, "dashboard")),
-      toast: { message: `HyperAgent request failed: ${err instanceof Error ? err.message : String(err)}`, type: "error" as const },
+      toast: { message: `SEO Agent request failed: ${err instanceof Error ? err.message : String(err)}`, type: "error" as const },
     };
   }
 }
@@ -242,7 +242,7 @@ export default definePlugin({
             }
           }
 
-          // Send to HyperAgent
+          // Send to SEO Agent
           if (actionId.startsWith("hyperagent:")) {
             const parts = actionId.slice("hyperagent:".length).split(":");
             const collection = parts[0];

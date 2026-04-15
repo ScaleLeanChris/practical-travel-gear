@@ -167,20 +167,25 @@ export async function runAudit(ctx: PluginContext): Promise<AuditResult[]> {
 
 	for (const collection of collections) {
 		try {
-			const result: any = await ctx.content!.list(collection, {
-				where: { status: "published" },
-				limit: 1000,
-			});
-			const items = result?.items ?? [];
-			for (const entry of items) {
-				const seo = (entry as any).seo ?? null;
-				const title = (seo?.title || (entry as any).data?.title || "").toLowerCase().trim();
-				if (title) {
-					const prev = allTitles.get(title);
-					if (!prev) allTitles.set(title, entry.id);
+			let cursor: string | undefined;
+			do {
+				const result: any = await ctx.content!.list(collection, {
+					where: { status: "published" },
+					limit: 100,
+					cursor,
+				});
+				const items = result?.items ?? [];
+				for (const entry of items) {
+					const seo = (entry as any).seo ?? null;
+					const title = (seo?.title || (entry as any).data?.title || "").toLowerCase().trim();
+					if (title) {
+						const prev = allTitles.get(title);
+						if (!prev) allTitles.set(title, entry.id);
+					}
+					allEntries.push({ entry, collection, seo });
 				}
-				allEntries.push({ entry, collection, seo });
-			}
+				cursor = result?.cursor;
+			} while (cursor);
 		} catch (err) {
 			ctx.log.warn(`Audit: failed to list ${collection}`, err);
 		}

@@ -9,7 +9,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
   let results: AuditResult[] = [];
   try {
     const auditData: any = await ctx.storage.audit_results.query({
-      limit: 200,
+      limit: 1000,
     });
     const items: any[] = auditData?.items ?? [];
     results = items
@@ -160,7 +160,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
           { type: "divider" },
           {
             type: "section",
-            text: `**Send to HyperAgent** — ${lowScoreEntries.length} entries scoring below 70`,
+            text: `**Send to SEO Agent** — ${lowScoreEntries.length} entries scoring below 70`,
           },
           {
             type: "actions",
@@ -176,7 +176,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     } else {
       blocks.push({
         type: "context",
-        text: "Add a HyperAgent webhook in Settings to send low-scoring content for SEO review.",
+        text: "Add an SEO Agent webhook in Settings to send low-scoring content for review.",
       });
     }
   }
