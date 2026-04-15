@@ -126,7 +126,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
   }
 
-  // Entry scores table with HyperAgent actions
+  // Entry scores table with SEO Agent actions
   const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
   const entryRows = results.slice(0, 50).map((r) => ({
     title: r.title,
@@ -152,32 +152,29 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
       },
     );
 
-    // Per-entry HyperAgent buttons below the table
-    if (hasHyperagent) {
-      const lowScoreEntries = results.slice(0, 50).filter((r) => r.score < 70);
-      if (lowScoreEntries.length > 0) {
-        blocks.push(
-          { type: "divider" },
-          {
-            type: "section",
-            text: `**Send to SEO Agent** — ${lowScoreEntries.length} entries scoring below 70`,
-          },
-          {
-            type: "actions",
-            elements: lowScoreEntries.slice(0, 10).map((r) => ({
-              type: "button",
-              label: `${r.title} (${r.score})`,
-              action_id: `hyperagent:${r.collection}:${r.entryId}`,
-              style: "default",
-            })),
-          },
-        );
+    // Per-entry SEO Agent buttons below the table
+    const lowScoreEntries = results.slice(0, 50).filter((r) => r.score < 70);
+    if (lowScoreEntries.length > 0) {
+      blocks.push(
+        { type: "divider" },
+        {
+          type: "section",
+          text: hasHyperagent
+            ? `**Send to SEO Agent** — ${lowScoreEntries.length} entries scoring below 70`
+            : `**${lowScoreEntries.length} entries scoring below 70** — add SEO Agent webhook in Settings to send for review`,
+        },
+      );
+      if (hasHyperagent) {
+        blocks.push({
+          type: "actions",
+          elements: lowScoreEntries.slice(0, 10).map((r) => ({
+            type: "button",
+            label: `${r.title} (${r.score})`,
+            action_id: `hyperagent:${r.collection}:${r.entryId}`,
+            style: "default",
+          })),
+        });
       }
-    } else {
-      blocks.push({
-        type: "context",
-        text: "Add an SEO Agent webhook in Settings to send low-scoring content for review.",
-      });
     }
   }
 
