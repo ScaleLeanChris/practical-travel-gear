@@ -19,12 +19,12 @@ export function seoToolkitPlugin(): PluginDescriptor {
 			analysis_scores: {
 				indexes: ["entryId", "collection", "lastAnalysis"],
 			},
+			ranking_history: {
+				indexes: ["keyword", "fetchedAt"],
+			},
 		},
 		adminPages: [
-			{ path: "/dashboard", label: "SEO Dashboard", icon: "bar-chart" },
-			{ path: "/rankings", label: "Rankings", icon: "trending-up" },
-			{ path: "/backlinks", label: "Backlinks", icon: "link" },
-			{ path: "/settings", label: "SEO Settings", icon: "settings" },
+			{ path: "/seo", label: "SEO", icon: "bar-chart" },
 		],
 	};
 }
