@@ -126,55 +126,26 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
   }
 
-  // Entry scores table with SEO Agent actions
+  // Entry scores with inline SEO Agent actions
   const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
-  const entryRows = results.slice(0, 50).map((r) => ({
-    title: r.title,
-    collection: r.collection,
-    score: String(r.score),
-    issues: String(r.issues.length),
-  }));
+  const top50 = results.slice(0, 50);
 
-  if (entryRows.length > 0) {
+  if (top50.length > 0) {
     blocks.push(
       { type: "divider" },
       { type: "header", text: "Content Scores (worst first)" },
-      {
-        type: "table",
-        blockId: "entry-scores",
-        columns: [
-          { key: "title", label: "Title", format: "text" },
-          { key: "collection", label: "Collection", format: "text" },
-          { key: "score", label: "Score", format: "text" },
-          { key: "issues", label: "Issues", format: "text" },
-        ],
-        rows: entryRows,
-      },
     );
 
-    // Per-entry SEO Agent buttons below the table
-    const lowScoreEntries = results.slice(0, 50).filter((r) => r.score < 70);
-    if (lowScoreEntries.length > 0) {
-      blocks.push(
-        { type: "divider" },
-        {
-          type: "section",
-          text: hasHyperagent
-            ? `**Send to SEO Agent** — ${lowScoreEntries.length} entries scoring below 70`
-            : `**${lowScoreEntries.length} entries scoring below 70** — add SEO Agent webhook in Settings to send for review`,
-        },
-      );
-      if (hasHyperagent) {
-        blocks.push({
-          type: "actions",
-          elements: lowScoreEntries.slice(0, 10).map((r) => ({
-            type: "button",
-            label: `${r.title} (${r.score})`,
-            action_id: `hyperagent:${r.collection}:${r.entryId}`,
-            style: "default",
-          })),
-        });
-      }
+    for (const r of top50) {
+      const accessory = hasHyperagent && r.score < 70
+        ? { type: "button", label: "Send to SEO Agent", action_id: `hyperagent:${r.collection}:${r.entryId}`, style: "primary" }
+        : undefined;
+
+      blocks.push({
+        type: "section",
+        text: `**${r.title}** — ${r.collection} — Score: ${r.score} — ${r.issues.length} issue${r.issues.length === 1 ? "" : "s"}`,
+        ...(accessory ? { accessory } : {}),
+      });
     }
   }
 
