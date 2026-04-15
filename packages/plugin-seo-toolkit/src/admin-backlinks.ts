@@ -63,7 +63,7 @@ function buildSharedHeader(summary: any, prevSummary: any): any[] {
       elements: [
         {
           type: "button",
-          label: "Fetch Backlinks",
+          text: "Fetch Backlinks",
           action_id: "refresh_data:backlinks",
           style: "primary",
         },

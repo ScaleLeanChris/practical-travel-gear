@@ -19,7 +19,7 @@ export function buildTabBar(activeTab: Tab): any {
 		type: "actions",
 		elements: TAB_CONFIG.map((tab) => ({
 			type: "button",
-			label: tab.label,
+			text: tab.label,
 			action_id: `tab:${tab.id}`,
 			style: activeTab === tab.id ? "primary" : "default",
 		})),
@@ -31,7 +31,7 @@ export function buildSubTabBar(activeSubTab: BacklinksSubTab): any {
 		type: "actions",
 		elements: SUBTAB_CONFIG.map((sub) => ({
 			type: "button",
-			label: sub.label,
+			text: sub.label,
 			action_id: `subtab:${sub.id}`,
 			style: activeSubTab === sub.id ? "primary" : "default",
 		})),

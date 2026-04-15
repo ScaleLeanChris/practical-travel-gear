@@ -47,7 +47,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     elements: [
       {
         type: "button",
-        label: "Run Content Audit",
+        text: "Run Content Audit",
         action_id: "run_audit",
         style: "primary",
       },

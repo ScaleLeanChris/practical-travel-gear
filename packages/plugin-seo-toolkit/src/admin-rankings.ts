@@ -38,7 +38,7 @@ export async function buildRankingsTab(ctx: PluginContext): Promise<any[]> {
       elements: [
         {
           type: "button",
-          label: "Fetch Rankings",
+          text: "Fetch Rankings",
           action_id: "refresh_data:rankings",
           style: "primary",
         },
