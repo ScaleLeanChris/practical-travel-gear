@@ -10,3 +10,8 @@ _clean_redirects.json
 dump.sql
 .playwright-mcp/
 screenshots/
+
+# Claude Code context files (don't bundle into Astro build)
+src/**/CLAUDE.md
+packages/**/CLAUDE.md
+seed/CLAUDE.md
