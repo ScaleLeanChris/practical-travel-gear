@@ -50,7 +50,7 @@ export async function buildSettingsTab(ctx: PluginContext): Promise<any[]> {
 		{ type: "divider" },
 		{
 			type: "stats",
-			stats: [
+			items: [
 				{ label: "Status", value: login ? "Configured" : "Not Configured" },
 				{ label: "Domain", value: domain },
 				{ label: "Last Refresh", value: lastRefresh ?? "Never" },

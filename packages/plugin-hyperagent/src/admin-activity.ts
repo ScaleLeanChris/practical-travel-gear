@@ -34,7 +34,7 @@ export async function buildActivityPage(ctx: PluginContext) {
 
 	blocks.push({
 		type: "stats",
-		stats: [
+		items: [
 			{ label: "Total Tasks", value: String(tasks.length) },
 			{ label: "Sent", value: String(sent) },
 			{ label: "Failed", value: String(failed), color: failed > 0 ? "red" : "green" },

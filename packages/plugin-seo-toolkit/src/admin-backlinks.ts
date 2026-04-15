@@ -43,7 +43,7 @@ function buildSharedHeader(summary: any, prevSummary: any): any[] {
   return [
     {
       type: "stats",
-      stats: [
+      items: [
         {
           label: "Total Backlinks",
           value: String(summary.totalBacklinks ?? 0),
@@ -63,7 +63,7 @@ function buildSharedHeader(summary: any, prevSummary: any): any[] {
       elements: [
         {
           type: "button",
-          text: "Fetch Backlinks",
+          label: "Fetch Backlinks",
           action_id: "refresh_data:backlinks",
           style: "primary",
         },

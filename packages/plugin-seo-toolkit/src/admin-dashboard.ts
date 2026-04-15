@@ -47,7 +47,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     elements: [
       {
         type: "button",
-        text: "Run Content Audit",
+        label: "Run Content Audit",
         action_id: "run_audit",
         style: "primary",
       },
@@ -80,7 +80,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
 
   blocks.push({
     type: "stats",
-    stats: [
+    items: [
       {
         label: "Site Health",
         value: `${avgScore}/100`,
