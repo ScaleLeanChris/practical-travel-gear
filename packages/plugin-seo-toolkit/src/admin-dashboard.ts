@@ -126,7 +126,7 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
   }
 
-  // Entry scores with inline SEO Agent actions
+  // Entry scores table with SEO Agent actions
   const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
   const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
   const top50 = results.slice(0, 50);
@@ -138,9 +138,10 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
       try {
         const entry: any = await ctx.content.get(r.collection, r.entryId);
         const d = entry?.data;
-        const byline = d?.bylines?.[0]?.name ?? d?.bylines?.[0]?.data?.name ?? "";
-        const status = d?.status ?? "unknown";
-        const date = d?.published_at ?? d?.created_at ?? d?.updatedAt ?? "";
+        // Bylines are auto-hydrated — each has .name at the top level
+        const byline = d?.bylines?.[0]?.name ?? "";
+        const status = d?.status ?? "";
+        const date = d?.published_at ?? d?.created_at ?? "";
         const shortDate = date ? new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "";
         entryMeta.set(r.entryId, { author: byline, status, date: shortDate });
       } catch {
@@ -150,32 +151,52 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
   }
 
   if (top50.length > 0) {
+    const entryRows = top50.map((r) => {
+      const meta = entryMeta.get(r.entryId);
+      const url = `https://${domain}/${r.slug.replace(/^\/+/, "")}`;
+      return {
+        title: r.title,
+        url,
+        score: String(r.score),
+        issues: String(r.issues.length),
+        status: meta?.status ?? "",
+        author: meta?.author ?? "",
+        date: meta?.date ?? "",
+      };
+    });
+
     blocks.push(
       { type: "divider" },
       { type: "header", text: "Content Scores (worst first)" },
+      {
+        type: "table",
+        blockId: "entry-scores",
+        columns: [
+          { key: "title", label: "Title", format: "text" },
+          { key: "score", label: "Score", format: "text" },
+          { key: "issues", label: "Issues", format: "text" },
+          { key: "status", label: "Status", format: "text" },
+          { key: "author", label: "Author", format: "text" },
+          { key: "date", label: "Date", format: "text" },
+        ],
+        rows: entryRows,
+      },
     );
 
-    for (const r of top50) {
-      const meta = entryMeta.get(r.entryId);
-      const url = `https://${domain}/${r.slug.replace(/^\/+/, "")}`;
-      const accessory = hasHyperagent && r.score < 70
-        ? { type: "button", label: "Send to SEO Agent", action_id: `hyperagent:${r.collection}:${r.entryId}`, style: "primary" }
-        : undefined;
-
-      const parts = [
-        `**[${r.title}](${url})**`,
-        `Score: ${r.score}`,
-        `${r.issues.length} issue${r.issues.length === 1 ? "" : "s"}`,
-        meta?.status ? `Status: ${meta.status}` : null,
-        meta?.author ? `By: ${meta.author}` : null,
-        meta?.date ? meta.date : null,
-      ].filter(Boolean).join(" — ");
-
-      blocks.push({
-        type: "section",
-        text: parts,
-        ...(accessory ? { accessory } : {}),
-      });
+    // SEO Agent action buttons for low-scoring entries
+    if (hasHyperagent) {
+      const lowScoreEntries = top50.filter((r) => r.score < 70);
+      if (lowScoreEntries.length > 0) {
+        blocks.push({
+          type: "actions",
+          elements: lowScoreEntries.slice(0, 10).map((r) => ({
+            type: "button",
+            label: `Send: ${r.title.slice(0, 30)}${r.title.length > 30 ? "…" : ""} (${r.score})`,
+            action_id: `hyperagent:${r.collection}:${r.entryId}`,
+            style: "primary",
+          })),
+        });
+      }
     }
   }
 
