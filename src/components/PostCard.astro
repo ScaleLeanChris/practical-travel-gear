@@ -1,6 +1,7 @@
 ---
 import type { MediaValue, ContentBylineCredit } from "emdash";
 import { Image } from "emdash/ui";
+import { getBylineAvatar } from "../utils/gravatar";
 
 interface Props {
 	title: string;
@@ -33,6 +34,8 @@ const formattedDate = date
 	: null;
 
 const authorName = bylines && bylines.length > 0 ? bylines[0].byline.displayName : null;
+const authorSlug = bylines && bylines.length > 0 ? bylines[0].byline.slug : null;
+const authorAvatar = authorSlug ? getBylineAvatar(authorSlug) : null;
 ---
 
 <article class="post-card">
@@ -67,7 +70,12 @@ const authorName = bylines && bylines.length > 0 ? bylines[0].byline.displayName
 						<a href={`/tag/${tag.slug}`} class="card-tag">#{tag.label}</a>
 					))}
 				</div>
-				{authorName && <span class="card-author">{authorName}</span>}
+				{authorName && (
+					<span class="card-author">
+						{authorAvatar && <img src={authorAvatar} alt={authorName} class="card-author-avatar" />}
+						{authorName}
+					</span>
+				)}
 			</div>
 
 			<a href={href} class="continue-reading">Continue Reading</a>
@@ -205,9 +213,19 @@ const authorName = bylines && bylines.length > 0 ? bylines[0].byline.displayName
 	}
 
 	.card-author {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-2);
 		font-size: var(--font-size-sm);
 		color: var(--color-text-secondary);
 		font-style: italic;
+	}
+
+	.card-author-avatar {
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		object-fit: cover;
 	}
 
 	.continue-reading {

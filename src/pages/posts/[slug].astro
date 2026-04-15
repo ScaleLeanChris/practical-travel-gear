@@ -15,6 +15,7 @@ import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
 import Sidebar from "../../components/Sidebar.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { getBylineAvatar } from "../../utils/gravatar";
 
 const { slug } = Astro.params;
 
@@ -134,13 +135,13 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 
 				{authorName && (
 					<div class="article-author">
-						{bylines[0].byline.avatarMediaId && (
-							<img
-								src={`/_emdash/api/media/file/${bylines[0].byline.avatarMediaId}`}
-								alt={authorName}
-								class="author-avatar"
-							/>
-						)}
+						<img
+							src={bylines[0].byline.avatarMediaId
+								? `/_emdash/api/media/file/${bylines[0].byline.avatarMediaId}`
+								: getBylineAvatar(bylines[0].byline.slug)}
+							alt={authorName}
+							class="author-avatar"
+						/>
 						<span class="author-name">{authorName}</span>
 					</div>
 				)}

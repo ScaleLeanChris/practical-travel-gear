@@ -13,6 +13,7 @@ import {
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
 import { getReadingTime } from "../../utils/reading-time";
+import { getBylineAvatar } from "../../utils/gravatar";
 
 const { slug } = Astro.params;
 
@@ -100,13 +101,13 @@ const publishDate =
 							<div class="bylines">
 								{bylines.map((credit) => (
 									<div class="byline">
-										{credit.byline.avatarMediaId && (
-											<img
-												src={`/_emdash/api/media/file/${credit.byline.avatarMediaId}`}
-												alt={credit.byline.displayName}
-												class="byline-avatar"
-											/>
-										)}
+										<img
+											src={credit.byline.avatarMediaId
+												? `/_emdash/api/media/file/${credit.byline.avatarMediaId}`
+												: getBylineAvatar(credit.byline.slug)}
+											alt={credit.byline.displayName}
+											class="byline-avatar"
+										/>
 										<span class="byline-name">{credit.byline.displayName}</span>
 									</div>
 								))}
