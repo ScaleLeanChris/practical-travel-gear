@@ -10,6 +10,7 @@ import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 
 export default defineConfig({
+	site: "https://practicaltravelgear.com",
 	output: "server",
 	adapter: cloudflare(),
 	image: {
