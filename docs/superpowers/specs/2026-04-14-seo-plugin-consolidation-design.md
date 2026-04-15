@@ -9,13 +9,65 @@ All changes are within `packages/plugin-seo-toolkit/src/`. No site-side (Astro) 
 **Files modified:**
 - `index.ts` — descriptor: replace 4 adminPages with 1, add `ranking_history` storage table
 - `sandbox-entry.ts` — route handler: tab/sub-tab navigation state machine, split action button handlers
-- `admin-dashboard.ts` — unchanged content, but called as a tab builder instead of page builder
+- `admin-dashboard.ts` — upgrade `fields` to `stats` with trend indicators, `context` to `banner` for empty states, called as tab builder
 - `admin-rankings.ts` — add "Change" column, trend chart, "Fetch Rankings" button
 - `admin-backlinks.ts` — restructure into 3 sub-tab builders, add individual links fetcher/renderer
 - `admin-settings.ts` — remove action buttons, settings-only
 - `dataforseo.ts` — add `fetchIndividualBacklinks()`, add ranking history write/read/prune logic
 
 **New files:** None. All changes fit within existing modules.
+
+## 0. Block Kit Modernization (all pages)
+
+The current admin pages use older Block Kit patterns. As part of this consolidation, upgrade all pages to use native Block Kit primitives:
+
+### `fields` -> `stats` for metric cards
+
+Current code uses `fields` blocks with emoji traffic lights (e.g. `"🟢 85/100"`). Replace with `stats` blocks which have native trend indicators:
+
+```typescript
+// Before (current)
+{ type: "fields", fields: [
+  { label: "Site Health", value: "🟢 85/100" },
+  { label: "Issues Found", value: "8" },
+]}
+
+// After (native)
+{ type: "stats", stats: [
+  { label: "Site Health", value: "85/100", trend: "+5", trend_direction: "up" },
+  { label: "Issues Found", value: "8", trend: "-3", trend_direction: "down" },
+]}
+```
+
+Apply this to:
+- **Dashboard tab**: Site Health, Entries Scanned, Issues Found — with trend data from previous audit (store last audit summary in KV for comparison)
+- **Rankings tab**: Tracked Keywords, Top 10, Top 3 — with trend from ranking history
+- **Backlinks tab header**: Total Backlinks, Referring Domains, Domain Rank, Dofollow — with trend from previous fetch (compare current vs previous `backlink_summary` in domain_data)
+
+### `context` -> `banner` for empty/error states
+
+Current code uses `context` blocks for empty states ("No audit data yet..."). Replace with `banner` blocks which are visually distinct:
+
+```typescript
+// Before
+{ type: "context", text: "No audit data yet. Go to SEO Settings..." }
+
+// After
+{ type: "banner", title: "No audit data", description: "Run a content audit to see your SEO scores.", variant: "default" }
+```
+
+Apply to all empty-data states and credential-missing prompts across all tabs.
+
+### Retain `context` for supplementary info
+
+`context` blocks are still appropriate for timestamps ("Last updated: ...") and brief help text that supplements other blocks. Only replace `context` when it's being used as the primary content of an empty state.
+
+### Previous-value tracking for trends
+
+To power `stats` trend indicators, store a previous summary snapshot:
+- **Dashboard**: After each audit, save `{ avgScore, totalIssues, entriesScanned }` to KV key `"prev_audit_summary"`. On next load, calculate deltas.
+- **Rankings**: Trends come from `ranking_history` table (already designed in section 3).
+- **Backlinks**: Before overwriting `backlink_summary` in `domain_data`, read the current value and save to KV key `"prev_backlink_summary"`. On next load, calculate deltas.
 
 ## 1. Navigation & Page Structure (Issue #2)
 
