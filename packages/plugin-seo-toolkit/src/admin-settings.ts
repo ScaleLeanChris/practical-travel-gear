@@ -1,94 +1,68 @@
 import type { PluginContext } from "emdash";
 
-export async function buildSettingsPage(ctx: PluginContext) {
+export async function buildSettingsTab(ctx: PluginContext): Promise<any[]> {
 	const login = (await ctx.kv.get<string>("settings:dataforseoLogin")) ?? "";
 	const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
 	const autoRefresh = (await ctx.kv.get<boolean>("settings:autoRefresh")) ?? true;
 	const lastRefresh = await ctx.kv.get<string>("settings:lastRefresh");
 	const hasPassword = !!(await ctx.kv.get<string>("settings:dataforseoPassword"));
 
-	return {
-		blocks: [
-			{ type: "header", text: "SEO Settings" },
-			{
-				type: "context",
-				text: "Connect your DataForSEO account to track keyword rankings, backlinks, and broken inbound links.",
-			},
-			{ type: "divider" },
-			{
-				type: "form",
-				block_id: "seo-settings",
-				fields: [
-					{
-						type: "text_input",
-						action_id: "dataforseoLogin",
-						label: "DataForSEO Login Email",
-						initial_value: login,
-						placeholder: "you@example.com",
-					},
-					{
-						type: "secret_input",
-						action_id: "dataforseoPassword",
-						label: hasPassword ? "DataForSEO API Password (saved)" : "DataForSEO API Password",
-						placeholder: hasPassword ? "Password saved \u2014 leave blank to keep" : "From app.dataforseo.com dashboard",
-					},
-					{
-						type: "text_input",
-						action_id: "domain",
-						label: "Your Domain (what DataForSEO tracks)",
-						initial_value: domain,
-						placeholder: "example.com",
-					},
-					{
-						type: "toggle",
-						action_id: "autoRefresh",
-						label: "Auto-refresh data weekly (rankings, backlinks, audit)",
-						initial_value: autoRefresh,
-					},
-				],
-				submit: { label: "Save Settings", action_id: "save_seo_settings" },
-			},
-			{ type: "divider" },
-			{
-				type: "fields",
-				fields: [
-					{ label: "Status", value: login ? "Configured" : "Not Configured" },
-					{ label: "Domain", value: domain },
-					{ label: "Last Refresh", value: lastRefresh ?? "Never" },
-				],
-			},
-			{ type: "divider" },
-			{ type: "header", text: "Actions" },
-			{
-				type: "context",
-				text: "Fetch rankings and backlinks from DataForSEO, or scan your content for SEO issues.",
-			},
-			{
-				type: "actions",
-				elements: [
-					{
-						type: "button",
-						label: "Fetch Rankings & Backlinks",
-						text: "Fetch Rankings & Backlinks",
-						action_id: "refresh_data",
-						style: "primary",
-					},
-					{
-						type: "button",
-						label: "Run Content Audit",
-						text: "Run Content Audit",
-						action_id: "run_audit",
-					},
-				],
-			},
-		],
-	};
+	return [
+		{ type: "header", text: "Settings" },
+		{
+			type: "context",
+			text: "Connect your DataForSEO account to track keyword rankings, backlinks, and broken inbound links.",
+		},
+		{ type: "divider" },
+		{
+			type: "form",
+			block_id: "seo-settings",
+			fields: [
+				{
+					type: "text_input",
+					action_id: "dataforseoLogin",
+					label: "DataForSEO Login Email",
+					initial_value: login,
+					placeholder: "you@example.com",
+				},
+				{
+					type: "secret_input",
+					action_id: "dataforseoPassword",
+					label: hasPassword ? "DataForSEO API Password (saved)" : "DataForSEO API Password",
+					placeholder: hasPassword ? "Password saved \u2014 leave blank to keep" : "From app.dataforseo.com dashboard",
+				},
+				{
+					type: "text_input",
+					action_id: "domain",
+					label: "Your Domain (what DataForSEO tracks)",
+					initial_value: domain,
+					placeholder: "example.com",
+				},
+				{
+					type: "toggle",
+					action_id: "autoRefresh",
+					label: "Auto-refresh data weekly (rankings, backlinks, audit)",
+					initial_value: autoRefresh,
+				},
+			],
+			submit: { label: "Save Settings", action_id: "save_seo_settings" },
+		},
+		{ type: "divider" },
+		{
+			type: "stats",
+			stats: [
+				{ label: "Status", value: login ? "Configured" : "Not Configured" },
+				{ label: "Domain", value: domain },
+				{ label: "Last Refresh", value: lastRefresh ?? "Never" },
+			],
+		},
+	];
 }
 
 export async function saveSettings(
 	ctx: PluginContext,
 	values: Record<string, unknown>,
-) {
+): Promise<void> {
 	if (typeof values.dataforseoLogin === "string" && values.dataforseoLogin.trim())
 		await ctx.kv.set("settings:dataforseoLogin", values.dataforseoLogin.trim());
 	if (typeof values.dataforseoPassword === "string" && values.dataforseoPassword !== "")
@@ -97,9 +71,4 @@ export async function saveSettings(
 		await ctx.kv.set("settings:domain", values.domain.trim());
 	if (typeof values.autoRefresh === "boolean")
 		await ctx.kv.set("settings:autoRefresh", values.autoRefresh);
-
-	return {
-		...(await buildSettingsPage(ctx)),
-		toast: { message: "Settings saved", type: "success" as const },
-	};
 }
