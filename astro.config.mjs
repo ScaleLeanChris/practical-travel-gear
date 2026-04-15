@@ -4,7 +4,7 @@ import { d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { formsPlugin } from "@emdash-cms/plugin-forms";
 import { webhookNotifierPlugin } from "@emdash-cms/plugin-webhook-notifier";
 import { agentMailPlugin } from "plugin-agentmail";
-import { paperclipPlugin } from "plugin-paperclip";
+import { hyperagentPlugin } from "plugin-hyperagent";
 import { seoToolkitPlugin } from "plugin-seo-toolkit";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
@@ -22,7 +22,12 @@ export default defineConfig({
 		emdash({
 			database: d1({ binding: "DB", session: "auto" }),
 			storage: r2({ binding: "MEDIA" }),
-			plugins: [formsPlugin(), agentMailPlugin(), seoToolkitPlugin(), paperclipPlugin()],
+			plugins: [
+				formsPlugin(),
+				agentMailPlugin(),
+				seoToolkitPlugin(),
+				hyperagentPlugin(),
+			],
 			sandboxed: [webhookNotifierPlugin()],
 			sandboxRunner: sandbox(),
 			marketplace: "https://marketplace.emdashcms.com",
