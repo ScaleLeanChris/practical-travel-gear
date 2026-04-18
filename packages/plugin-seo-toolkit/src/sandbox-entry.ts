@@ -73,13 +73,18 @@ async function sendToHyperagent(ctx: PluginContext, collection: string, entryId:
     issues.length > 0 ? `Issues: ${issues.join(", ")}` : null,
   ].filter((line) => line !== null).join("\n");
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "User-Agent": "EmDash-SEO-Toolkit/1.0 (Cloudflare Worker)",
+  };
   if (webhookSecret) {
     headers["X-Hyperagent-Webhook-Secret"] = webhookSecret;
   }
 
   try {
-    const response = await ctx.http.fetch(webhookUrl, {
+    // Use global fetch directly — ctx.http.fetch goes through the sandbox
+    // bridge which may be blocked by Cloudflare's outbound firewall
+    const response = await fetch(webhookUrl, {
       method: "POST",
       headers,
       body: JSON.stringify({ message }),
@@ -87,9 +92,11 @@ async function sendToHyperagent(ctx: PluginContext, collection: string, entryId:
 
     if (!response.ok) {
       const text = await response.text();
+      const server = response.headers.get("server") ?? "unknown";
+      const cfRay = response.headers.get("cf-ray") ?? "none";
       return {
         ...(await renderTab(ctx, "dashboard")),
-        toast: { message: `SEO Agent returned ${response.status}: ${text.slice(0, 100)}`, type: "error" as const },
+        toast: { message: `SEO Agent ${response.status} (server: ${server}, cf-ray: ${cfRay}): ${text.slice(0, 60)}`, type: "error" as const },
       };
     }
 
