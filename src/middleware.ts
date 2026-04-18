@@ -54,7 +54,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		!shouldSkipCache(request);
 
 	if (!cacheable) {
-		return next();
+		const r = await next();
+		try { r.headers.set("X-Edge-Cache", "skip"); } catch { /* immutable */ }
+		return r;
 	}
 
 	// caches.default is the Cloudflare Workers per-POP cache. The CacheStorage
@@ -63,7 +65,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
 	const cache = (globalThis as unknown as { caches: { default: Cache } }).caches?.default;
 	if (cache) {
 		const hit = await cache.match(request);
-		if (hit) return hit;
+		if (hit) {
+			const h = new Response(hit.body, hit);
+			h.headers.set("X-Edge-Cache", "hit");
+			return h;
+		}
 	}
 
 	const response = await next();
@@ -73,6 +79,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 	if (response.status === 200 && isHtml) {
 		const headers = new Headers(response.headers);
+		headers.set("X-Edge-Cache", "miss");
 		// Only set if the route hasn't already picked a stronger policy.
 		if (!headers.has("cache-control")) {
 			headers.set("Cache-Control", EDGE_CACHE_CONTROL);
@@ -84,9 +91,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		});
 
 		if (cache) {
+			// Astro 6 removed `locals.runtime.ctx`; on Cloudflare the
+			// ExecutionContext is exposed as `locals.cfContext`.
 			type CfCtx = { waitUntil: (p: Promise<unknown>) => void };
-			const cfCtx = (context.locals as { runtime?: { ctx?: CfCtx }; cfContext?: CfCtx })
-				.runtime?.ctx ?? (context.locals as { cfContext?: CfCtx }).cfContext;
+			const cfCtx = (context.locals as { cfContext?: CfCtx }).cfContext;
 			if (cfCtx?.waitUntil) {
 				cfCtx.waitUntil(cache.put(request, cached.clone()));
 			} else {

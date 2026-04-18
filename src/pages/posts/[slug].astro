@@ -70,14 +70,17 @@ const seo = getSeoMeta(post, {
 	defaultOgImage: featuredImageUrl,
 });
 
-const tags = await getEntryTerms("posts", post.data.id, "tag");
+// Fetch the post's own tags and the recent-posts list in parallel.
+const [tags, { entries: recentPosts }] = await Promise.all([
+	getEntryTerms("posts", post.data.id, "tag"),
+	getEmDashCollection("posts", {
+		orderBy: { published_at: "desc" },
+		limit: 4,
+	}),
+]);
 const bylines = post.data.bylines ?? [];
 const readingTime = getReadingTime(post.data.content);
 
-const { entries: recentPosts } = await getEmDashCollection("posts", {
-	orderBy: { published_at: "desc" },
-	limit: 4,
-});
 const otherPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 3);
 const otherPostsWithTags = await Promise.all(
 	otherPosts.map(async (p) => {

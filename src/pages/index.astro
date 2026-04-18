@@ -5,27 +5,18 @@ import PostCard from "../components/PostCard.astro";
 import Sidebar from "../components/Sidebar.astro";
 import { getReadingTime } from "../utils/reading-time";
 
-const page = Number(Astro.url.searchParams.get("page") || "1");
-const perPage = 10;
-// Cap how many posts we pull for the paginated home view. Pulling the whole
-// posts collection on every home request scales linearly with content and is
-// the single biggest SSR cost on this route.
-const MAX_HOME_POSTS = 100;
+const cursor = Astro.url.searchParams.get("cursor") ?? undefined;
 
-const { entries: allPosts, cacheHint } = await getEmDashCollection("posts", {
+const { entries: posts, nextCursor, cacheHint } = await getEmDashCollection("posts", {
+	limit: 10,
+	cursor,
 	orderBy: { published_at: "desc" },
-	limit: MAX_HOME_POSTS,
 });
 
 Astro.cache.set(cacheHint);
 
-const totalPages = Math.max(1, Math.ceil(allPosts.length / perPage));
-const currentPage = Math.max(1, Math.min(page, totalPages));
-const paginatedPosts = allPosts.slice((currentPage - 1) * perPage, currentPage * perPage);
-
-// Fetch tags + bylines for paginated posts
 const postsWithMeta = await Promise.all(
-	paginatedPosts.map(async (post) => {
+	posts.map(async (post) => {
 		const tags = await getEntryTerms("posts", post.data.id, "tag");
 		return {
 			post,
@@ -52,16 +43,9 @@ const postsWithMeta = await Promise.all(
 				/>
 			))}
 
-			{/* Pagination */}
-			{totalPages > 1 && (
+			{nextCursor && (
 				<div class="pagination">
-					<span class="page-info">Page {currentPage} of {totalPages}</span>
-					{currentPage < totalPages && (
-						<a href={`/?page=${currentPage + 1}`} class="page-link">Next &raquo;</a>
-					)}
-					{currentPage > 1 && (
-						<a href={currentPage === 2 ? "/" : `/?page=${currentPage - 1}`} class="page-link">&laquo; Previous</a>
-					)}
+					<a href={`/?cursor=${nextCursor}`} class="page-link">Older posts &raquo;</a>
 				</div>
 			)}
 		</div>
