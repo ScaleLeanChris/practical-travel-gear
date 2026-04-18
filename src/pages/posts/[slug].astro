@@ -8,7 +8,6 @@ import {
 import {
 	Image,
 	PortableText,
-	Comments,
 	CommentForm,
 } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
@@ -157,7 +156,16 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 				)}
 
 				<div class="article-comments">
-					<Comments collection="posts" contentId={post.data.id} threaded />
+					<div
+						class="comments-lazy"
+						data-comments-root
+						data-collection="posts"
+						data-content-id={post.data.id}
+					>
+						<noscript>
+							<p class="comments-noscript">Enable JavaScript to read comments.</p>
+						</noscript>
+					</div>
 					<CommentForm collection="posts" contentId={post.data.id} />
 				</div>
 			</article>
@@ -413,6 +421,76 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 		color: var(--color-on-accent) !important;
 	}
 
+	.comments-lazy {
+		min-height: 80px;
+	}
+
+	.comments-lazy :global(.ec-comments-heading) {
+		font-size: var(--font-size-2xl);
+		font-weight: 600;
+		margin-bottom: var(--spacing-8);
+	}
+
+	.comments-lazy :global(.ec-comments-list),
+	.comments-lazy :global(.ec-comment-replies) {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.comments-lazy :global(.ec-comments-list > li + li) {
+		margin-top: var(--spacing-6);
+	}
+
+	.comments-lazy :global(.ec-comment) {
+		padding-bottom: var(--spacing-6);
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.comments-lazy :global(.ec-comment-replies) {
+		margin-top: var(--spacing-6);
+		padding-left: var(--spacing-8);
+	}
+
+	.comments-lazy :global(.ec-comment-replies > li + li) {
+		margin-top: var(--spacing-6);
+	}
+
+	.comments-lazy :global(.ec-comment-header) {
+		display: flex;
+		align-items: baseline;
+		gap: var(--spacing-2);
+		flex-wrap: wrap;
+	}
+
+	.comments-lazy :global(.ec-comment-author) {
+		font-weight: 600;
+	}
+
+	.comments-lazy :global(.ec-comment-date) {
+		font-size: var(--font-size-sm);
+		color: var(--color-muted);
+	}
+
+	.comments-lazy :global(.ec-comment-body) {
+		margin-top: var(--spacing-2);
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+
+	.comments-loading,
+	.comments-empty,
+	.comments-error {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+		padding: var(--spacing-4) 0;
+	}
+
+	.comments-noscript {
+		color: var(--color-muted);
+		font-size: var(--font-size-sm);
+	}
+
 	/* More posts */
 	.more-posts {
 		margin-top: var(--spacing-12);
@@ -443,3 +521,180 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 		}
 	}
 </style>
+
+<script>
+	type PublicComment = {
+		id: string;
+		authorName: string;
+		isRegisteredUser?: boolean;
+		createdAt: string;
+		body: string;
+		replies?: PublicComment[];
+	};
+
+	const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+
+	const fmtDate = (iso: string) => {
+		const d = new Date(iso);
+		if (isNaN(d.getTime())) return iso;
+		return d.toLocaleDateString("en-US", {
+			year: "numeric",
+			month: "long",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+		});
+	};
+
+	// Build a body element with URL auto-linking. User text goes through
+	// textContent (no HTML parsing); anchors are constructed via createElement.
+	const buildBody = (text: string): HTMLDivElement => {
+		const div = document.createElement("div");
+		div.className = "ec-comment-body";
+		const parts = text.split(URL_RE);
+		for (const part of parts) {
+			if (URL_RE.test(part)) {
+				URL_RE.lastIndex = 0;
+				const a = document.createElement("a");
+				a.href = part;
+				a.rel = "nofollow ugc noopener";
+				a.target = "_blank";
+				a.textContent = part;
+				div.appendChild(a);
+			} else if (part) {
+				div.appendChild(document.createTextNode(part));
+			}
+		}
+		return div;
+	};
+
+	const buildComment = (c: PublicComment, isReply = false): HTMLElement => {
+		const article = document.createElement("article");
+		article.className = isReply ? "ec-comment ec-comment-reply" : "ec-comment";
+		article.id = `comment-${c.id}`;
+		article.dataset.commentId = c.id;
+
+		const header = document.createElement("header");
+		header.className = "ec-comment-header";
+
+		const author = document.createElement("span");
+		author.className = "ec-comment-author";
+		author.textContent = c.authorName;
+		if (c.isRegisteredUser) {
+			const badge = document.createElement("span");
+			badge.className = "ec-comment-badge";
+			badge.setAttribute("aria-label", "Site member");
+			badge.textContent = " \u2713";
+			author.appendChild(badge);
+		}
+		header.appendChild(author);
+
+		const time = document.createElement("time");
+		time.className = "ec-comment-date";
+		time.dateTime = c.createdAt;
+		time.textContent = fmtDate(c.createdAt);
+		header.appendChild(time);
+
+		article.appendChild(header);
+		article.appendChild(buildBody(c.body));
+
+		if (c.replies && c.replies.length > 0) {
+			const ol = document.createElement("ol");
+			ol.className = "ec-comment-replies";
+			for (const reply of c.replies) {
+				const li = document.createElement("li");
+				li.appendChild(buildComment(reply, true));
+				ol.appendChild(li);
+			}
+			article.appendChild(ol);
+		}
+
+		return article;
+	};
+
+	const setMessage = (root: HTMLElement, text: string, cls: string) => {
+		root.replaceChildren();
+		const div = document.createElement("div");
+		div.className = cls;
+		div.textContent = text;
+		root.appendChild(div);
+	};
+
+	const load = async (root: HTMLElement) => {
+		const collection = root.dataset.collection;
+		const contentId = root.dataset.contentId;
+		if (!collection || !contentId) return;
+
+		setMessage(root, "Loading comments\u2026", "comments-loading");
+
+		const url = `/_emdash/api/comments/${encodeURIComponent(collection)}/${encodeURIComponent(
+			contentId,
+		)}?threaded=true`;
+
+		try {
+			const res = await fetch(url);
+			if (res.status === 403) {
+				root.replaceChildren();
+				return;
+			}
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const payload = (await res.json()) as {
+				success: boolean;
+				data?: { items: PublicComment[]; total: number };
+			};
+			if (!payload.success || !payload.data) throw new Error("Bad response");
+
+			const { items, total } = payload.data;
+			const section = document.createElement("section");
+			section.className = "ec-comments";
+			section.dataset.collection = collection;
+			section.dataset.contentId = contentId;
+
+			const heading = document.createElement("h3");
+			heading.className = "ec-comments-heading";
+			heading.textContent =
+				total === 0
+					? "No comments yet"
+					: total === 1
+						? "1 Comment"
+						: `${total} Comments`;
+			section.appendChild(heading);
+
+			if (items.length > 0) {
+				const list = document.createElement("ol");
+				list.className = "ec-comments-list";
+				for (const c of items) {
+					const li = document.createElement("li");
+					li.appendChild(buildComment(c));
+					list.appendChild(li);
+				}
+				section.appendChild(list);
+			}
+
+			root.replaceChildren(section);
+		} catch (err) {
+			setMessage(root, "Could not load comments.", "comments-error");
+			console.error("[comments] load failed:", err);
+		}
+	};
+
+	const roots = document.querySelectorAll<HTMLElement>("[data-comments-root]");
+	if (roots.length > 0) {
+		if ("IntersectionObserver" in window) {
+			const io = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						if (entry.isIntersecting) {
+							io.unobserve(entry.target);
+							load(entry.target as HTMLElement);
+						}
+					}
+				},
+				{ rootMargin: "400px" },
+			);
+			roots.forEach((r) => io.observe(r));
+		} else {
+			roots.forEach((r) => load(r));
+		}
+	}
+</script>

@@ -1,5 +1,5 @@
 ---
-import { getMenu, getEmDashCollection, getTaxonomyTerms } from "emdash";
+import { getMenu, getTaxonomyTerms } from "emdash";
 import {
 	WidgetArea,
 	EmDashHead,
@@ -39,12 +39,12 @@ const siteTitle = "Practical Travel Gear";
 const siteTagline = "Honest Travel Gear Reviews and Advice";
 const fullTitle = title.includes(siteTitle) ? title : `${title} | ${siteTitle}`;
 
-const menu = await getMenu("primary");
-const socialMenu = await getMenu("social");
-const { entries: pages } = await getEmDashCollection("pages");
-
-// Get tags for the tag cloud in sidebar/footer
-const tags = await getTaxonomyTerms("tag");
+// Run layout queries in parallel; these are independent D1 calls.
+const [menu, socialMenu, tags] = await Promise.all([
+	getMenu("primary"),
+	getMenu("social"),
+	getTaxonomyTerms("tag"),
+]);
 
 // Social link icon mapping
 const socialIcons: Record<string, string> = {
@@ -181,11 +181,6 @@ const isLoggedIn = !!Astro.locals.user;
 							</a>
 						))
 					}
-					{
-						isLoggedIn && (
-							<a href="/_emdash/admin" class="nav-admin">Admin</a>
-						)
-					}
 				</div>
 			</nav>
 		</header>
@@ -248,7 +243,11 @@ const isLoggedIn = !!Astro.locals.user;
 			</div>
 
 			<div class="footer-bottom">
-				<p>&copy; 2017 Practical Travel Gear. All Rights Reserved.</p>
+				<p>
+					&copy; 2017 Practical Travel Gear. All Rights Reserved.
+					{' · '}
+					<a href="/_emdash/admin" class="footer-admin">{isLoggedIn ? 'Admin' : 'Login'}</a>
+				</p>
 			</div>
 		</footer>
 
