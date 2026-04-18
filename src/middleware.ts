@@ -8,26 +8,39 @@
 import { defineMiddleware } from "astro:middleware";
 import { wpRedirects } from "./data/wp-redirects";
 
-const CACHEABLE_PATHS: RegExp[] = [
+// Individual content pages (posts, pages, guides, root-level slugs) rarely
+// change post-publish. Give them a 1-hour freshness window.
+const CONTENT_CACHE_CONTROL = "public, s-maxage=3600, stale-while-revalidate=86400";
+// Listings (home, categories, tags, search, RSS) surface new entries and
+// change more often. Keep them on a short 5-minute freshness window.
+const LISTING_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=86400";
+
+const LISTING_PATHS: RegExp[] = [
 	/^\/$/,
-	/^\/posts(\/|$)/,
-	/^\/pages(\/|$)/,
-	/^\/guides(\/|$)/,
+	/^\/posts\/?$/,
+	/^\/pages\/?$/,
+	/^\/guides\/?$/,
 	/^\/category\//,
 	/^\/tag\//,
 	/^\/search$/,
 	/^\/rss\.xml$/,
+];
+
+const CONTENT_PATHS: RegExp[] = [
+	/^\/posts\/[^/]+\/?$/,
+	/^\/pages\/[^/]+\/?$/,
+	/^\/guides\/[^/]+\/?$/,
 	// Single-segment root URLs (WP-style post/page permalinks).
-	// Excludes admin (/_emdash), assets with extensions, and known prefixes.
+	// Excludes admin (/_emdash), assets with extensions, and listing roots.
 	/^\/[^/._]+\/?$/,
 ];
 
-const EDGE_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=86400";
-
-function isCacheablePath(pathname: string): boolean {
-	if (pathname.startsWith("/_emdash")) return false;
-	if (pathname.startsWith("/api/")) return false;
-	return CACHEABLE_PATHS.some((re) => re.test(pathname));
+function cacheControlFor(pathname: string): string | null {
+	if (pathname.startsWith("/_emdash")) return null;
+	if (pathname.startsWith("/api/")) return null;
+	if (LISTING_PATHS.some((re) => re.test(pathname))) return LISTING_CACHE_CONTROL;
+	if (CONTENT_PATHS.some((re) => re.test(pathname))) return CONTENT_CACHE_CONTROL;
+	return null;
 }
 
 function shouldSkipCache(request: Request): boolean {
@@ -48,10 +61,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return context.redirect(destination, 301);
 	}
 
-	const cacheable =
-		request.method === "GET" &&
-		isCacheablePath(pathname) &&
-		!shouldSkipCache(request);
+	const routeCacheControl = request.method === "GET" ? cacheControlFor(pathname) : null;
+	const cacheable = routeCacheControl !== null && !shouldSkipCache(request);
 
 	if (!cacheable) {
 		const r = await next();
@@ -82,7 +93,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		headers.set("X-Edge-Cache", "miss");
 		// Only set if the route hasn't already picked a stronger policy.
 		if (!headers.has("cache-control")) {
-			headers.set("Cache-Control", EDGE_CACHE_CONTROL);
+			headers.set("Cache-Control", routeCacheControl);
 		}
 		const cached = new Response(response.body, {
 			status: response.status,
