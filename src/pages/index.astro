@@ -7,14 +7,19 @@ import { getReadingTime } from "../utils/reading-time";
 
 const page = Number(Astro.url.searchParams.get("page") || "1");
 const perPage = 10;
+// Cap how many posts we pull for the paginated home view. Pulling the whole
+// posts collection on every home request scales linearly with content and is
+// the single biggest SSR cost on this route.
+const MAX_HOME_POSTS = 100;
 
 const { entries: allPosts, cacheHint } = await getEmDashCollection("posts", {
 	orderBy: { published_at: "desc" },
+	limit: MAX_HOME_POSTS,
 });
 
 Astro.cache.set(cacheHint);
 
-const totalPages = Math.ceil(allPosts.length / perPage);
+const totalPages = Math.max(1, Math.ceil(allPosts.length / perPage));
 const currentPage = Math.max(1, Math.min(page, totalPages));
 const paginatedPosts = allPosts.slice((currentPage - 1) * perPage, currentPage * perPage);
 

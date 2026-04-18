@@ -15,7 +15,11 @@ if (!Astro.request.headers.get("X-Rewrite")) {
 	return Astro.redirect(`/${slug}`, 301);
 }
 
-const { entry: page, cacheHint } = await getEmDashEntry("pages", slug);
+const prefetched = Astro.locals.prefetchedEntry;
+const { entry: page, cacheHint } =
+	prefetched?.collection === "pages" && prefetched.slug === slug
+		? (prefetched.result as Awaited<ReturnType<typeof getEmDashEntry<"pages">>>)
+		: await getEmDashEntry("pages", slug);
 
 if (!page) {
 	return Astro.redirect("/404");

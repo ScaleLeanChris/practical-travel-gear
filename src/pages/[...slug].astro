@@ -37,15 +37,17 @@ function rewriteTo(path: string) {
 	);
 }
 
-// Try post first (most common)
-const { entry: post } = await getEmDashEntry("posts", slug);
-if (post) {
+// Try post first (most common). Stash the full result on locals so the
+// rewritten target route can skip a redundant D1 lookup.
+const postResult = await getEmDashEntry("posts", slug);
+if (postResult.entry) {
+	Astro.locals.prefetchedEntry = { collection: "posts", slug, result: postResult };
 	return rewriteTo(`/posts/${slug}`);
 }
 
-// Try page
-const { entry: page } = await getEmDashEntry("pages", slug);
-if (page) {
+const pageResult = await getEmDashEntry("pages", slug);
+if (pageResult.entry) {
+	Astro.locals.prefetchedEntry = { collection: "pages", slug, result: pageResult };
 	return rewriteTo(`/pages/${slug}`);
 }
 

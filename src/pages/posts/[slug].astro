@@ -29,7 +29,14 @@ if (!Astro.request.headers.get("X-Rewrite")) {
 	return Astro.redirect(`/${slug}`, 301);
 }
 
-const { entry: post, cacheHint } = await getEmDashEntry("posts", slug);
+// Prefer the prefetched entry left by the catch-all (`/:slug`) to avoid a
+// second D1 round-trip. Fall back to a direct query for any future route
+// that hits this file without going through the catch-all.
+const prefetched = Astro.locals.prefetchedEntry;
+const { entry: post, cacheHint } =
+	prefetched?.collection === "posts" && prefetched.slug === slug
+		? (prefetched.result as Awaited<ReturnType<typeof getEmDashEntry<"posts">>>)
+		: await getEmDashEntry("posts", slug);
 
 if (!post) {
 	return Astro.redirect("/404");
