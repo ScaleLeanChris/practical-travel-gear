@@ -37,43 +37,28 @@ const {
 	content,
 } = Astro.props;
 const siteTitle = "Practical Travel Gear";
-const siteTagline = "Honest Travel Gear Reviews and Advice";
 const fullTitle = title.includes(siteTitle) ? title : `${title} | ${siteTitle}`;
 
-const [menu, socialMenu, tags] = await Promise.all([
-	getMenu("primary"),
+const [socialMenu, tags] = await Promise.all([
 	getMenu("social"),
 	getTaxonomyTerms("tag"),
 ]);
 
-const socialIcons: Record<string, string> = {
-	facebook: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>',
-	instagram: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>',
-	pinterest: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z"/></svg>',
-	rss: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M6.503 20.752c0 1.794-1.456 3.248-3.251 3.248-1.796 0-3.252-1.454-3.252-3.248 0-1.794 1.456-3.248 3.252-3.248 1.795.001 3.251 1.454 3.251 3.248zm-6.503-12.572v4.811c6.05.062 10.96 4.966 11.022 11.009h4.817c-.062-8.742-7.099-15.783-15.839-15.82zm0-8.18v4.819c12.951.115 23.409 10.627 23.523 23.564h4.477c-.115-15.764-12.843-28.512-28-28.383z"/></svg>',
-};
+// Activity-led primary nav. Hardcoded to match the design — these are
+// category taxonomy links; terms don't all exist yet but will be created
+// as content gets tagged.
+const navItems: Array<{ label: string; url: string; icon: string | null }> = [
+	{ label: "Home", url: "/", icon: null },
+	{ label: "Luggage", url: "/category/luggage", icon: "luggage" },
+	{ label: "Packs", url: "/category/packs", icon: "pack" },
+	{ label: "Apparel", url: "/category/apparel", icon: "shirt" },
+	{ label: "Footwear", url: "/category/footwear", icon: "boot" },
+	{ label: "Tech", url: "/category/tech", icon: "cable" },
+	{ label: "Accessories", url: "/category/accessories", icon: "tag" },
+	{ label: "Camping", url: "/category/camping", icon: "tent" },
+];
 
-// Map nav labels (as stored in seed) to an icon name for the category nav
-const navIcons: Record<string, string> = {
-	luggage: "luggage",
-	packs: "pack",
-	backpacks: "pack",
-	apparel: "shirt",
-	footwear: "boot",
-	tech: "cable",
-	accessories: "tag",
-	guides: "tent",
-	posts: "map",
-	reviews: "tent",
-};
-
-function getSocialKey(label: string): string {
-	return label.toLowerCase();
-}
-function getNavIconKey(label: string): string | null {
-	const key = label.toLowerCase();
-	return navIcons[key] ?? null;
-}
+const currentPath = Astro.url.pathname;
 
 const pageCtx = createPublicPageContext({
 	Astro,
@@ -90,12 +75,6 @@ const pageCtx = createPublicPageContext({
 });
 
 const isLoggedIn = !!Astro.locals.user;
-
-const todayLabel = new Date().toLocaleDateString("en-US", {
-	weekday: "short",
-	month: "short",
-	day: "numeric",
-});
 ---
 
 <!doctype html>
@@ -144,38 +123,16 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 		<EmDashBodyStart page={pageCtx} />
 
 		<header class="site-header">
-			<!-- Utility strip -->
-			<div class="header-utility">
-				<div class="header-utility-inner">
-					<div class="util-l">
-						<span><span class="util-dot"></span> Honest travel gear reviews &middot; tested &amp; trusted since 2007</span>
-					</div>
-					<div class="util-r">
-						{socialMenu?.items.slice(0, 4).map((item) => {
-							const key = getSocialKey(item.label);
-							return (
-								<a href={item.url} target={item.target} rel={item.target === '_blank' ? 'noopener noreferrer' : undefined} aria-label={item.label} class="util-social">
-									<Fragment set:html={socialIcons[key] || socialIcons.rss} />
-								</a>
-							);
-						})}
-						<span class="util-date">{todayLabel}</span>
-					</div>
-				</div>
-			</div>
-
-			<!-- Main header: logo + search -->
+			<!-- Main header: logo + subscribe -->
 			<div class="header-main">
-				<div class="header-main-spacer"></div>
 				<a href="/" class="site-logo">
 					<img src="/images/PTG_Logo_Full.png" alt={siteTitle} />
 				</a>
 				<div class="header-actions">
-					<button type="button" class="header-search-toggle" id="search-toggle" aria-label="Search">
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-						<span>Search</span>
-						<kbd>⌘K</kbd>
+					<button type="button" class="header-search-icon" id="search-toggle" aria-label="Search">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
 					</button>
+					<a href="/subscribe" class="btn-subscribe">Subscribe</a>
 				</div>
 			</div>
 
@@ -197,11 +154,13 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 			<!-- Category navigation -->
 			<nav class="cat-nav-wrap">
 				<div class="cat-nav">
-					{menu?.items.map((item) => {
-						const iconKey = getNavIconKey(item.label);
+					{navItems.map((item) => {
+						const active = item.url === "/"
+							? currentPath === "/"
+							: currentPath.startsWith(item.url);
 						return (
-							<a href={item.url} target={item.target}>
-								{iconKey && <CatIcon name={iconKey} />}
+							<a href={item.url} class={active ? "active" : ""}>
+								{item.icon && <CatIcon name={item.icon} />}
 								{item.label}
 							</a>
 						);
@@ -229,10 +188,10 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 					</form>
 				</div>
 				<div class="footer-col">
-					<h4>Sections</h4>
+					<h4>Categories</h4>
 					<div class="footer-links">
-						{menu?.items.map((item) => (
-							<a href={item.url} target={item.target}>{item.label}</a>
+						{navItems.filter((i) => i.url !== "/").map((item) => (
+							<a href={item.url}>{item.label}</a>
 						))}
 					</div>
 				</div>
@@ -351,114 +310,64 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 				z-index: 50;
 			}
 
-			.header-utility {
-				border-bottom: 1px solid var(--rule);
-				background: var(--surface);
-			}
-
-			.header-utility-inner {
-				max-width: var(--maxw);
-				margin: 0 auto;
-				padding: 7px 24px;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				font-family: var(--font-mono);
-				font-size: 11px;
-				color: var(--ink-3);
-				text-transform: uppercase;
-				letter-spacing: 0.06em;
-			}
-
-			.util-l, .util-r {
-				display: flex;
-				align-items: center;
-				gap: 14px;
-			}
-
-			.util-social {
-				display: inline-flex;
-				align-items: center;
-				color: var(--ink-3);
-				opacity: 0.7;
-				transition: color var(--transition-fast), opacity var(--transition-fast);
-			}
-			.util-social:hover { color: var(--accent); opacity: 1; }
-
-			.util-date {
-				padding-left: 14px;
-				border-left: 1px solid var(--rule-2);
-			}
-
-			.util-dot {
-				display: inline-block;
-				width: 6px;
-				height: 6px;
-				border-radius: 50%;
-				background: var(--accent);
-				margin-right: 6px;
-				vertical-align: middle;
-				animation: pulse 2s infinite;
-			}
-
-			@keyframes pulse {
-				0%, 100% { opacity: 1; }
-				50% { opacity: 0.4; }
-			}
-
-			/* Main header */
+			/* Main header: logo left, subscribe right */
 			.header-main {
 				max-width: var(--maxw);
 				margin: 0 auto;
-				padding: 18px 24px;
-				display: grid;
-				grid-template-columns: 1fr auto 1fr;
+				padding: 20px 24px 16px;
+				display: flex;
+				justify-content: space-between;
 				align-items: center;
 				gap: 24px;
 			}
 
-			.header-main-spacer { display: block; }
-
 			.site-logo {
-				display: flex;
+				display: inline-flex;
 				align-items: center;
-				justify-content: center;
 			}
 			.site-logo img {
-				height: 52px;
+				height: 48px;
 				width: auto;
 				display: block;
 			}
 
 			.header-actions {
 				display: flex;
-				justify-content: flex-end;
 				align-items: center;
 				gap: 8px;
 			}
 
-			.header-search-toggle {
+			.header-search-icon {
 				display: inline-flex;
 				align-items: center;
-				gap: 8px;
-				padding: 8px 14px;
-				background: var(--surface);
-				border: 1px solid var(--rule);
-				border-radius: 999px;
+				justify-content: center;
+				width: 38px;
+				height: 38px;
+				border-radius: 50%;
+				background: transparent;
 				color: var(--ink-3);
-				font-size: 13px;
+				border: 0;
 				cursor: pointer;
-				transition: border-color var(--transition-fast), color var(--transition-fast);
+				transition: background var(--transition-fast), color var(--transition-fast);
 			}
-			.header-search-toggle:hover { border-color: var(--ink); color: var(--ink); }
-			.header-search-toggle kbd {
-				font-family: var(--font-mono);
-				font-size: 10px;
-				border: 1px solid var(--rule-2);
-				padding: 2px 5px;
-				border-radius: 3px;
-				color: var(--ink-3);
+			.header-search-icon:hover {
+				background: var(--surface);
+				color: var(--ink);
 			}
+
+			.btn-subscribe {
+				display: inline-flex;
+				align-items: center;
+				padding: 10px 22px;
+				background: var(--ink);
+				color: var(--bg);
+				border-radius: 999px;
+				font-size: 14px;
+				font-weight: 600;
+				letter-spacing: -0.005em;
+				transition: background var(--transition-fast);
+			}
+			.btn-subscribe:hover { background: var(--accent); color: white; }
 
 			/* Search overlay */
 			.search-overlay {
@@ -581,8 +490,8 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 			}
 			.cat-nav::-webkit-scrollbar { display: none; }
 			.cat-nav a {
-				padding: 12px 14px;
-				font-size: 13px;
+				padding: 14px 18px;
+				font-size: 14px;
 				font-weight: 500;
 				color: var(--ink-2);
 				white-space: nowrap;
@@ -591,11 +500,23 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 				transition: color var(--transition-fast), border-color var(--transition-fast);
 				display: flex;
 				align-items: center;
-				gap: 6px;
+				gap: 8px;
 			}
 			.cat-nav a:first-child { padding-left: 0; }
 			.cat-nav a:hover { color: var(--accent); }
-			.cat-nav a :global(svg) { width: 14px; height: 14px; }
+			.cat-nav a.active {
+				color: var(--ink);
+				font-weight: 700;
+				border-bottom-color: var(--accent);
+			}
+			.cat-nav a :global(svg) {
+				width: 16px;
+				height: 16px;
+				color: var(--ink-3);
+				flex-shrink: 0;
+			}
+			.cat-nav a:hover :global(svg) { color: var(--accent); }
+			.cat-nav a.active :global(svg) { color: var(--ink); }
 
 			/* ===== FOOTER ===== */
 			.site-footer {
@@ -726,29 +647,17 @@ const todayLabel = new Date().toLocaleDateString("en-US", {
 				.footer-top > :nth-child(n+4) { display: none; }
 			}
 			@media (max-width: 900px) {
-				.header-main { grid-template-columns: auto 1fr auto; padding: 14px 16px; }
-				.header-main-spacer { display: none; }
-				.header-search-toggle span { display: none; }
-				.header-search-toggle kbd { display: none; }
-				.util-l { font-size: 10px; }
-				.util-date { display: none; }
+				.header-main { padding: 14px 16px; }
 				.site-logo img { height: 40px; }
+				.btn-subscribe { padding: 8px 16px; font-size: 13px; }
+				.cat-nav a { padding: 12px 12px; font-size: 13px; }
 				.footer-top { grid-template-columns: 1fr; gap: 28px; }
 				.footer-top > :nth-child(n+4) { display: block; }
 				.footer-bottom { flex-direction: column; gap: 6px; text-align: center; }
 			}
 			@media (max-width: 640px) {
 				.site-logo img { height: 36px; }
-				.util-l span:not(.util-dot) { display: none; }
-				.util-l::before {
-					content: '';
-					display: inline-block;
-					width: 6px;
-					height: 6px;
-					border-radius: 50%;
-					background: var(--accent);
-					animation: pulse 2s infinite;
-				}
+				.btn-subscribe { padding: 7px 14px; font-size: 12px; }
 			}
 		</style>
 
