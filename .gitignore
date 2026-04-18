@@ -15,3 +15,16 @@ screenshots/
 src/**/CLAUDE.md
 packages/**/CLAUDE.md
 seed/CLAUDE.md
+scripts/CLAUDE.md
+docs/**/CLAUDE.md
+.agents/**/CLAUDE.md
+
+# Agent scratch/state
+.superpowers/
+
+# macOS
+.DS_Store
+
+# Script output / logs
+scripts/*.log
+_guides_slugs.txt
