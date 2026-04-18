@@ -1,6 +1,10 @@
 // WordPress redirect map (auto-generated from Yoast SEO Premium redirects)
 // 301 redirects for old/merged/consolidated URLs
 export const wpRedirects: Record<string, string> = {
+	"/best-universal-travel-adapter-for-phones-and-laptops": "/guides/best-universal-travel-adapter-for-phones-and-laptops",
+	"/best-travel-power-bank-for-flights-and-long-travel-days": "/guides/best-travel-power-bank-for-flights-and-long-travel-days",
+	"/best-travel-coffee-mug-what-is-worth-packing": "/guides/best-travel-coffee-mug-what-is-worth-packing",
+	"/best-travel-coffee-mug": "/guides/best-travel-coffee-mug",
 	"/mergedpost/best-mens-travel-underwear": "/exofficio-underwear",
 	"/21116-2": "/rei-talusphere-jacket-for-women",
 	"/21079-2": "/wolverine-garrick-mens-chelsea-boots",
