@@ -16,12 +16,16 @@ const { entries: posts } = await getEmDashCollection("posts", {
 	orderBy: { published_at: "desc" },
 });
 
-// Fetch tags for display on each post card
 const filteredPosts = await Promise.all(
 	posts.map(async (post) => {
 		const tags = await getEntryTerms("posts", post.data.id, "tag");
-		return { post, tags };
-	})
+		return {
+			post,
+			tags,
+			bylines: post.data.bylines ?? [],
+			readingTime: getReadingTime(post.data.content),
+		};
+	}),
 );
 ---
 
@@ -29,92 +33,111 @@ const filteredPosts = await Promise.all(
 	title={`Posts tagged "${term.label}"`}
 	description={`All posts tagged with ${term.label}`}
 >
-	<section class="archive-section">
-		<header class="archive-header">
-			<span class="archive-label">Tag</span>
-			<h1 class="archive-title">{term.label}</h1>
+	<section class="archive-hero">
+		<div class="container">
+			<nav class="breadcrumb" aria-label="Breadcrumb">
+				<a href="/">Home</a>
+				<span class="sep">/</span>
+				<span>Tags</span>
+			</nav>
+			<span class="archive-kicker">Tag</span>
+			<h1 class="archive-title">#{term.label}</h1>
 			<p class="archive-count">
 				{filteredPosts.length}
-				{filteredPosts.length === 1 ? "post" : "posts"}
+				{filteredPosts.length === 1 ? "story" : "stories"}
 			</p>
-		</header>
+		</div>
+	</section>
 
-		{
-			filteredPosts.length === 0 ? (
-				<p class="no-posts">No posts with this tag yet.</p>
+	<section class="archive-body">
+		<div class="container">
+			{filteredPosts.length === 0 ? (
+				<p class="no-posts">No stories with this tag yet.</p>
 			) : (
-				<div class="posts-grid">
-					{filteredPosts.map(({ post, tags }) => (
+				<div class="river">
+					{filteredPosts.map(({ post, tags, bylines, readingTime }) => (
 						<PostCard
 							title={post.data.title}
 							excerpt={post.data.excerpt}
 							featuredImage={post.data.featured_image}
 							href={`/${post.id}`}
 							date={post.data.publishedAt ?? undefined}
-							readingTime={getReadingTime(post.data.content)}
+							readingTime={readingTime}
 							tags={tags.map((t) => ({ slug: t.slug, label: t.label }))}
+							bylines={bylines}
 						/>
 					))}
 				</div>
-			)
-		}
+			)}
+		</div>
 	</section>
 </Base>
 
 <style>
-	.archive-section {
-		max-width: var(--wide-width);
-		margin: 0 auto;
-		padding: var(--spacing-12) var(--spacing-6);
+	.archive-hero {
+		padding: 40px 0 28px;
+		border-bottom: 1px solid var(--rule);
 	}
-
-	.archive-header {
-		margin-bottom: var(--spacing-12);
-		padding-bottom: var(--spacing-8);
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-
-	.archive-label {
-		display: block;
-		font-size: var(--font-size-xs);
-		font-weight: 500;
-		color: var(--color-accent);
+	.breadcrumb {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-3);
 		text-transform: uppercase;
-		letter-spacing: var(--tracking-wider);
-		margin-bottom: var(--spacing-2);
+		letter-spacing: 0.08em;
+		margin-bottom: 16px;
 	}
+	.breadcrumb a { color: var(--ink-3); }
+	.breadcrumb a:hover { color: var(--accent); }
+	.breadcrumb .sep { margin: 0 8px; color: var(--rule-2); }
 
+	.archive-kicker {
+		display: inline-block;
+		background: var(--ink);
+		color: var(--bg);
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		padding: 4px 8px;
+		margin-bottom: 14px;
+	}
 	.archive-title {
-		font-size: var(--font-size-4xl);
-		font-weight: 700;
-		letter-spacing: var(--tracking-tight);
-		margin-bottom: var(--spacing-2);
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: clamp(32px, 4.5vw, 56px);
+		line-height: 1.02;
+		letter-spacing: -0.032em;
+		margin: 0 0 10px;
 	}
-
 	.archive-count {
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		margin: 0;
 	}
 
-	.posts-grid {
+	.archive-body {
+		padding: 40px 0 64px;
+	}
+
+	.river {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: var(--spacing-12) var(--spacing-8);
+		gap: 32px 24px;
+	}
+	@media (max-width: 900px) {
+		.river { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (max-width: 600px) {
+		.river { grid-template-columns: 1fr; }
 	}
 
 	.no-posts {
-		color: var(--color-muted);
-	}
-
-	@media (max-width: 900px) {
-		.posts-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-	}
-
-	@media (max-width: 600px) {
-		.posts-grid {
-			grid-template-columns: 1fr;
-		}
+		color: var(--ink-3);
+		font-size: 15px;
+		padding: 32px 0;
 	}
 </style>

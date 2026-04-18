@@ -5,14 +5,9 @@ import {
 	getEntryTerms,
 	getSeoMeta,
 } from "emdash";
-import {
-	Image,
-	PortableText,
-	CommentForm,
-} from "emdash/ui";
+import { Image, PortableText, CommentForm } from "emdash/ui";
 import Base from "../../layouts/Base.astro";
 import PostCard from "../../components/PostCard.astro";
-import Sidebar from "../../components/Sidebar.astro";
 import { getReadingTime } from "../../utils/reading-time";
 import { getBylineAvatar } from "../../utils/gravatar";
 
@@ -28,9 +23,6 @@ if (!Astro.request.headers.get("X-Rewrite")) {
 	return Astro.redirect(`/${slug}`, 301);
 }
 
-// Prefer the prefetched entry left by the catch-all (`/:slug`) to avoid a
-// second D1 round-trip. Fall back to a direct query for any future route
-// that hits this file without going through the catch-all.
 const prefetched = Astro.locals.prefetchedEntry;
 const { entry: post, cacheHint } =
 	prefetched?.collection === "posts" && prefetched.slug === slug
@@ -69,9 +61,10 @@ const seo = getSeoMeta(post, {
 	defaultOgImage: featuredImageUrl,
 });
 
-// Fetch the post's own tags and the recent-posts list in parallel.
-const [tags, { entries: recentPosts }] = await Promise.all([
+// Fetch post metadata + recent posts for "Continue reading" in parallel.
+const [tags, categories, { entries: recentPosts }] = await Promise.all([
 	getEntryTerms("posts", post.data.id, "tag"),
+	getEntryTerms("posts", post.data.id, "category"),
 	getEmDashCollection("posts", {
 		orderBy: { published_at: "desc" },
 		limit: 4,
@@ -85,17 +78,27 @@ const otherPostsWithTags = await Promise.all(
 	otherPosts.map(async (p) => {
 		const postTags = await getEntryTerms("posts", p.data.id, "tag");
 		return { post: p, tags: postTags, bylines: p.data.bylines ?? [] };
-	})
+	}),
 );
 
 const publishDate =
 	post.data.publishedAt?.toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
+		month: "short",
 		day: "numeric",
+		year: "numeric",
 	}) ?? null;
 
-const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
+const primaryCategory = categories[0] ?? null;
+const primaryAuthor = bylines[0]?.byline ?? null;
+const primaryAuthorInitials = primaryAuthor
+	? primaryAuthor.displayName
+			.split(" ")
+			.map((w) => w[0])
+			.filter(Boolean)
+			.slice(0, 2)
+			.join("")
+			.toUpperCase()
+	: null;
 ---
 
 <Base
@@ -109,416 +112,637 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 	modifiedTime={post.data.updatedAt.toISOString()}
 	content={{ collection: "posts", id: post.data.id, slug }}
 >
-	<div class="post-layout">
-		<div class="post-main">
-			<article class="article">
+	<article class="review">
+		{/* ===== HERO ===== */}
+		<section class="review-hero">
+			<div class="container">
+				<nav class="breadcrumb" aria-label="Breadcrumb">
+					<a href="/">Home</a>
+					<span class="sep">/</span>
+					<a href="/posts">Posts</a>
+					{primaryCategory && (
+						<>
+							<span class="sep">/</span>
+							<a href={`/category/${primaryCategory.slug}`}>
+								{primaryCategory.label}
+							</a>
+						</>
+					)}
+				</nav>
+
+				{primaryCategory && (
+					<span class="cat-chip filled">{primaryCategory.label}</span>
+				)}
+
+				<h1 class="review-title" {...post.edit.title}>{post.data.title}</h1>
+
+				{post.data.excerpt && (
+					<p class="dek">{post.data.excerpt}</p>
+				)}
+
+				<div class="meta-row">
+					{primaryAuthor && (
+						<div class="author">
+							<img
+								src={primaryAuthor.avatarMediaId
+									? `/_emdash/api/media/file/${primaryAuthor.avatarMediaId}`
+									: getBylineAvatar(primaryAuthor.slug)}
+								alt={primaryAuthor.displayName}
+								class="author-avatar"
+							/>
+							<span>
+								By <strong>{primaryAuthor.displayName}</strong>
+							</span>
+						</div>
+					)}
+					{publishDate && <span>{publishDate}</span>}
+					{readingTime && <span>{readingTime} min read</span>}
+				</div>
+
 				{post.data.featured_image && (
-					<div class="article-hero" {...post.edit.featured_image}>
+					<div class="hero-pic" {...post.edit.featured_image}>
 						<Image image={post.data.featured_image} />
 					</div>
 				)}
+			</div>
+		</section>
 
-				<h1 class="article-title" {...post.edit.title}>{post.data.title}</h1>
+		{/* ===== BODY ===== */}
+		<section>
+			<div class="container review-body">
+				<aside class="sticky-toc" aria-label="Table of contents">
+					<h4>In this article</h4>
+					<ol id="toc-content">
+						<!-- populated by JS -->
+					</ol>
+				</aside>
 
-				<div class="article-meta">
-					{publishDate && <time>{publishDate}</time>}
-					{publishDate && readingTime && <span class="meta-sep">&mdash;</span>}
-					{readingTime && <span>{readingTime} Min Read</span>}
-				</div>
-
-				{post.data.excerpt && (
-					<p class="article-excerpt">{post.data.excerpt}</p>
-				)}
-
-				<div class="article-content">
+				<div class="prose">
 					<PortableText value={post.data.content} />
 				</div>
 
-				{tags.length > 0 && (
-					<div class="article-tags">
-						{tags.map((t) => (
-							<a href={`/tag/${t.slug}`} class="article-tag">#{t.label}</a>
-						))}
-					</div>
-				)}
-
-				{authorName && (
-					<div class="article-author">
-						<img
-							src={bylines[0].byline.avatarMediaId
-								? `/_emdash/api/media/file/${bylines[0].byline.avatarMediaId}`
-								: getBylineAvatar(bylines[0].byline.slug)}
-							alt={authorName}
-							class="author-avatar"
-						/>
-						<span class="author-name">{authorName}</span>
-					</div>
-				)}
-
-				<div class="article-comments">
-					<div
-						class="comments-lazy"
-						data-comments-root
-						data-collection="posts"
-						data-content-id={post.data.id}
-					>
-						<noscript>
-							<p class="comments-noscript">Enable JavaScript to read comments.</p>
-						</noscript>
-					</div>
-					<CommentForm collection="posts" contentId={post.data.id} />
-				</div>
-			</article>
-
-			{otherPostsWithTags.length > 0 && (
-				<section class="more-posts">
-					<h2 class="more-title">Continue reading</h2>
-					{otherPostsWithTags.map(
-						({ post: p, tags: postTags, bylines: postBylines }) => (
-							<PostCard
-								title={p.data.title}
-								excerpt={p.data.excerpt}
-								featuredImage={p.data.featured_image}
-								href={`/${p.id}`}
-								date={p.data.publishedAt ?? undefined}
-								readingTime={getReadingTime(p.data.content)}
-								tags={postTags.map((t) => ({ slug: t.slug, label: t.label }))}
-								bylines={postBylines}
-							/>
-						)
+				<aside class="sticky-rail">
+					{primaryAuthor && (
+						<div class="rail-card">
+							<div class="rail-label">Written by</div>
+							<div class="rail-author">
+								{primaryAuthorInitials && (
+									<div class="rail-avatar">{primaryAuthorInitials}</div>
+								)}
+								<div>
+									<strong>{primaryAuthor.displayName}</strong>
+									{primaryAuthor.bio && (
+										<p class="rail-bio">{primaryAuthor.bio}</p>
+									)}
+								</div>
+							</div>
+						</div>
 					)}
-				</section>
-			)}
-		</div>
+					{tags.length > 0 && (
+						<div class="rail-card">
+							<div class="rail-label">Topics</div>
+							<div class="rail-tags">
+								{tags.map((t) => (
+									<a href={`/tag/${t.slug}`} class="rail-tag">{t.label}</a>
+								))}
+							</div>
+						</div>
+					)}
+				</aside>
+			</div>
+		</section>
 
-		<div class="post-sidebar">
-			<Sidebar />
-		</div>
-	</div>
+		{/* ===== COMMENTS + CONTINUE READING ===== */}
+		<section class="article-extras">
+			<div class="container extras-inner">
+				<div class="extras-main">
+					<div class="article-comments">
+						<div
+							class="comments-lazy"
+							data-comments-root
+							data-collection="posts"
+							data-content-id={post.data.id}
+						>
+							<noscript>
+								<p class="comments-noscript">Enable JavaScript to read comments.</p>
+							</noscript>
+						</div>
+						<CommentForm collection="posts" contentId={post.data.id} />
+					</div>
+
+					{otherPostsWithTags.length > 0 && (
+						<div class="more-posts">
+							<div class="section-head">
+								<h2>Continue <span class="sub">Reading</span></h2>
+								<a class="viewall" href="/posts">All posts →</a>
+							</div>
+							<div class="river">
+								{otherPostsWithTags.map(
+									({ post: p, tags: postTags, bylines: postBylines }) => (
+										<PostCard
+											title={p.data.title}
+											excerpt={p.data.excerpt}
+											featuredImage={p.data.featured_image}
+											href={`/${p.id}`}
+											date={p.data.publishedAt ?? undefined}
+											readingTime={getReadingTime(p.data.content)}
+											tags={postTags.map((t) => ({
+												slug: t.slug,
+												label: t.label,
+											}))}
+											bylines={postBylines}
+										/>
+									),
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
+		</section>
+	</article>
+
+	<script>
+		function buildToc() {
+			const content = document.querySelector(".prose");
+			const container = document.getElementById("toc-content");
+			const panel = document.querySelector(".sticky-toc") as HTMLElement | null;
+			if (!content || !container || !panel) return;
+
+			const headings = content.querySelectorAll("h2, h3");
+			if (headings.length < 2) {
+				panel.style.display = "none";
+				return;
+			}
+
+			headings.forEach((h, i) => {
+				if (!h.id) h.id = `heading-${i}`;
+				const li = document.createElement("li");
+				li.dataset.target = h.id;
+				if (h.tagName === "H3") li.classList.add("nested");
+				li.textContent = h.textContent;
+				container.appendChild(li);
+				li.addEventListener("click", () => {
+					document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+				});
+			});
+
+			const io = new IntersectionObserver(
+				(entries) => {
+					entries.forEach((entry) => {
+						const id = entry.target.id;
+						const li = container.querySelector(`li[data-target="${id}"]`);
+						if (!li) return;
+						if (entry.isIntersecting) {
+							container.querySelectorAll("li").forEach((x) => x.classList.remove("active"));
+							li.classList.add("active");
+						}
+					});
+				},
+				{ rootMargin: "-80px 0px -70% 0px" },
+			);
+			headings.forEach((h) => io.observe(h));
+		}
+		buildToc();
+	</script>
 </Base>
 
 <style>
-	.post-layout {
-		max-width: var(--wide-width);
-		margin: 0 auto;
-		padding: var(--spacing-10) var(--spacing-6);
-		display: grid;
-		grid-template-columns: 1fr var(--sidebar-width);
-		gap: var(--spacing-10);
-		align-items: start;
+	.review { display: block; }
+
+	/* ===== HERO ===== */
+	.review-hero {
+		padding: 32px 0 28px;
+		border-bottom: 1px solid var(--rule);
+	}
+	.breadcrumb {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		margin-bottom: 16px;
+	}
+	.breadcrumb a { color: var(--ink-3); }
+	.breadcrumb a:hover { color: var(--accent); }
+	.breadcrumb .sep { margin: 0 8px; color: var(--rule-2); }
+
+	.cat-chip.filled {
+		display: inline-block;
+		background: var(--ink);
+		color: var(--bg);
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		padding: 4px 8px;
+		margin-bottom: 14px;
 	}
 
-	.post-main {
-		min-width: 0;
+	.review-title {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: clamp(30px, 4.2vw, 52px);
+		line-height: 1.05;
+		letter-spacing: -0.028em;
+		margin: 0 0 14px;
+		max-width: 1000px;
+	}
+	.dek {
+		font-size: 17px;
+		color: var(--ink-2);
+		line-height: 1.5;
+		max-width: 760px;
+		margin: 0 0 24px;
 	}
 
-	.post-sidebar {
-		position: sticky;
-		top: var(--spacing-10);
+	.meta-row {
+		display: flex;
+		gap: 24px;
+		align-items: center;
+		padding: 14px 0;
+		border-top: 1px solid var(--rule);
+		border-bottom: 1px solid var(--rule);
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		flex-wrap: wrap;
 	}
+	.meta-row .author {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		color: var(--ink-2);
+	}
+	.meta-row .author-avatar {
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+	.meta-row strong { color: var(--ink); font-weight: 600; }
 
-	/* Article */
-	.article-hero {
-		border-radius: var(--radius-lg);
+	.hero-pic {
+		aspect-ratio: 16 / 9;
 		overflow: hidden;
-		margin-bottom: var(--spacing-8);
+		border-radius: var(--radius-lg);
+		margin-top: 24px;
+		background: var(--bg-alt);
 	}
-
-	.article-hero img {
+	.hero-pic :global(img) {
 		width: 100%;
-		height: auto;
-		max-height: 500px;
+		height: 100%;
 		object-fit: cover;
 	}
 
-	.article-title {
-		font-size: clamp(1.75rem, 4vw, var(--font-size-4xl));
-		font-weight: 700;
-		line-height: var(--leading-tight);
-		margin-bottom: var(--spacing-3);
+	/* ===== BODY ===== */
+	.review-body {
+		padding: 40px 24px 64px;
+		display: grid;
+		grid-template-columns: 240px minmax(0, 680px) 240px;
+		gap: 40px;
+		justify-content: center;
+		align-items: start;
+	}
+	@media (max-width: 1000px) {
+		.review-body {
+			grid-template-columns: 1fr;
+			padding: 32px 24px 48px;
+		}
+		.sticky-toc, .sticky-rail { display: none; }
 	}
 
-	.article-meta {
+	.sticky-toc, .sticky-rail {
+		position: sticky;
+		top: 180px;
+	}
+
+	.sticky-toc h4 {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--ink-3);
+		margin: 0 0 12px;
+		font-weight: 600;
+	}
+	.sticky-toc ol {
+		list-style: none;
+		padding-left: 14px;
+		margin: 0;
+		border-left: 2px solid var(--rule);
+	}
+	.sticky-toc ol li {
+		padding: 6px 0;
+		font-size: 13px;
+		line-height: 1.3;
+		color: var(--ink-2);
+		cursor: pointer;
+	}
+	.sticky-toc ol li.nested { padding-left: 12px; font-size: 12px; }
+	.sticky-toc ol li:hover,
+	.sticky-toc ol li.active {
+		color: var(--accent);
+		font-weight: 600;
+	}
+
+	.sticky-rail { display: flex; flex-direction: column; gap: 16px; }
+	.rail-card {
+		background: var(--surface);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-lg);
+		padding: 16px 18px;
+	}
+	.rail-label {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		color: var(--ink-3);
+		font-weight: 600;
+		margin-bottom: 10px;
+	}
+	.rail-author {
 		display: flex;
+		gap: 10px;
+		align-items: flex-start;
+	}
+	.rail-avatar {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: var(--accent);
+		color: white;
+		display: inline-flex;
 		align-items: center;
-		gap: var(--spacing-2);
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
-		margin-bottom: var(--spacing-6);
-	}
-
-	.meta-sep {
-		color: var(--color-accent);
-	}
-
-	.article-excerpt {
-		font-size: var(--font-size-lg);
-		line-height: var(--leading-relaxed);
-		color: var(--color-text-secondary);
-		margin-bottom: var(--spacing-8);
-		font-style: italic;
-	}
-
-	/* Article content typography */
-	.article-content {
-		font-size: var(--font-size-lg);
-		line-height: var(--leading-relaxed);
-	}
-
-	.article-content :global(p) {
-		margin-bottom: 1.5em;
-	}
-
-	.article-content :global(h2) {
-		font-size: var(--font-size-2xl);
-		margin-top: 2.5em;
-		margin-bottom: 0.75em;
-	}
-
-	.article-content :global(h3) {
-		font-size: var(--font-size-xl);
-		margin-top: 2em;
-		margin-bottom: 0.5em;
-	}
-
-	.article-content :global(blockquote) {
-		margin: 2em 0;
-		padding: var(--spacing-4) var(--spacing-6);
-		border-left: 3px solid var(--color-accent);
-		background: var(--color-surface);
-		border-radius: 0 var(--radius) var(--radius) 0;
-		color: var(--color-text-secondary);
-		font-style: italic;
-	}
-
-	.article-content :global(pre) {
-		margin: 2em 0;
-		padding: var(--spacing-5);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		overflow-x: auto;
+		justify-content: center;
+		font-weight: 700;
+		font-size: 12px;
 		font-family: var(--font-mono);
-		font-size: var(--font-size-sm);
-		line-height: 1.6;
+		flex-shrink: 0;
 	}
-
-	.article-content :global(code) {
-		font-family: var(--font-mono);
-		font-size: 0.9em;
-		background: var(--color-surface);
-		padding: 0.2em 0.4em;
-		border-radius: var(--radius);
+	.rail-author strong {
+		font-weight: 600;
+		font-size: 14px;
+		color: var(--ink);
 	}
-
-	.article-content :global(pre code) {
-		background: none;
-		padding: 0;
+	.rail-bio {
+		font-size: 12px;
+		color: var(--ink-3);
+		line-height: 1.45;
+		margin: 4px 0 0;
 	}
-
-	.article-content :global(ul),
-	.article-content :global(ol) {
-		margin-bottom: 1.5em;
-		padding-left: 1.5em;
+	.rail-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
 	}
-
-	.article-content :global(li) {
-		margin-bottom: 0.5em;
+	.rail-tag {
+		display: inline-block;
+		padding: 3px 10px;
+		font-size: 11px;
+		background: var(--bg);
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		color: var(--ink-2);
+		text-decoration: none;
 	}
+	.rail-tag:hover { color: var(--accent); border-color: var(--accent); }
 
-	.article-content :global(img) {
+	/* ===== PROSE ===== */
+	.prose {
+		font-size: 17px;
+		line-height: 1.65;
+		color: var(--ink);
+	}
+	.prose :global(p) {
+		margin: 0 0 1.2em;
+		color: var(--ink-2);
+	}
+	.prose :global(strong) { color: var(--ink); }
+	.prose :global(h2) {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 26px;
+		letter-spacing: -0.02em;
+		margin: 2.4em 0 0.6em;
+		padding-top: 0.4em;
+		border-top: 2px solid var(--ink);
+		color: var(--ink);
+	}
+	.prose :global(h3) {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 20px;
+		letter-spacing: -0.015em;
+		margin: 2em 0 0.5em;
+		color: var(--ink);
+	}
+	.prose :global(blockquote) {
+		font-family: var(--font-display);
+		font-weight: 700;
+		font-size: 22px;
+		line-height: 1.3;
+		letter-spacing: -0.015em;
+		padding: 20px 0;
+		border-top: 2px solid var(--accent);
+		border-bottom: 2px solid var(--accent);
+		color: var(--ink);
+		margin: 2em 0;
+	}
+	.prose :global(ul),
+	.prose :global(ol) {
+		margin: 0 0 1.4em;
+		padding-left: 1.4em;
+		color: var(--ink-2);
+	}
+	.prose :global(li) { margin-bottom: 0.5em; }
+	.prose :global(img) {
 		margin: 2em 0;
 		border-radius: var(--radius-lg);
 	}
-
-	.article-content :global(hr) {
+	.prose :global(hr) {
 		margin: 3em 0;
 		border: none;
-		border-top: 1px solid var(--color-border);
+		border-top: 1px solid var(--rule);
 	}
-
-	.article-content :global(a) {
-		color: var(--color-accent);
+	.prose :global(a) {
+		color: var(--accent);
 		text-decoration: underline;
 		text-underline-offset: 3px;
 		text-decoration-thickness: 1px;
 	}
-
-	.article-content :global(a:hover) {
-		text-decoration-thickness: 2px;
-	}
-
-	/* Tags */
-	.article-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--spacing-2);
-		margin-top: var(--spacing-8);
-		padding-top: var(--spacing-6);
-		border-top: 1px solid var(--color-border);
-	}
-
-	.article-tag {
-		font-size: var(--font-size-sm);
-		color: var(--color-tag);
-		text-decoration: none;
-		transition: color var(--transition-fast);
-	}
-
-	.article-tag:hover {
-		color: var(--color-accent);
-	}
-
-	/* Author */
-	.article-author {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-3);
-		margin-top: var(--spacing-6);
-		padding: var(--spacing-4);
-		background: var(--color-surface);
+	.prose :global(a:hover) { text-decoration-thickness: 2px; }
+	.prose :global(pre) {
+		margin: 2em 0;
+		padding: 20px;
+		background: var(--surface);
+		border: 1px solid var(--rule);
 		border-radius: var(--radius-lg);
+		overflow-x: auto;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		line-height: 1.6;
 	}
-
-	.author-avatar {
-		width: 48px;
-		height: 48px;
-		border-radius: 50%;
-		object-fit: cover;
+	.prose :global(code) {
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+		background: var(--bg-alt);
+		padding: 0.15em 0.4em;
+		border-radius: 3px;
 	}
+	.prose :global(pre code) { background: none; padding: 0; }
 
-	.author-name {
-		font-weight: 600;
-		color: var(--color-text);
+	/* ===== EXTRAS ===== */
+	.article-extras {
+		padding: 40px 0 64px;
+		background: var(--surface);
+		border-top: 1px solid var(--rule);
 	}
+	.extras-inner {
+		display: block;
+		padding-top: 0;
+	}
+	.extras-main { min-width: 0; }
 
-	/* Comments */
 	.article-comments {
-		margin-top: var(--spacing-12);
-		padding-top: var(--spacing-8);
-		border-top: 1px solid var(--color-border);
+		padding-bottom: 40px;
+		margin-bottom: 40px;
+		border-bottom: 1px solid var(--rule);
 	}
 
-	.article-comments :global(.ec-comments) {
-		--ec-comment-border: 1px solid var(--color-border);
+	.more-posts { padding-top: 8px; }
+	.section-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		padding-bottom: 16px;
+		margin-bottom: 20px;
+		border-bottom: 2px solid var(--ink);
+		gap: 16px;
+		flex-wrap: wrap;
 	}
-
-	.article-comments :global(.ec-comments-heading) {
-		font-size: var(--font-size-2xl);
+	.section-head h2 {
+		font-family: var(--font-display);
+		font-weight: 800;
+		font-size: 22px;
+		letter-spacing: -0.02em;
+		margin: 0;
+	}
+	.section-head h2 .sub { color: var(--accent); }
+	.section-head a.viewall {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink);
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
 		font-weight: 600;
-		margin-bottom: var(--spacing-8);
+	}
+	.section-head a.viewall:hover { color: var(--accent); }
+
+	.river {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 24px 20px;
+	}
+	@media (max-width: 900px) {
+		.river { grid-template-columns: repeat(2, 1fr); }
+	}
+	@media (max-width: 600px) {
+		.river { grid-template-columns: 1fr; }
 	}
 
+	/* ===== COMMENTS ===== */
+	.article-comments :global(.ec-comments) {
+		--ec-comment-border: 1px solid var(--rule);
+	}
+	.article-comments :global(.ec-comments-heading) {
+		font-family: var(--font-display);
+		font-size: 22px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		margin-bottom: 24px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid var(--ink);
+	}
 	.article-comments :global(.ec-comment-form-field input),
 	.article-comments :global(.ec-comment-form-field textarea) {
-		background: var(--color-surface) !important;
-		border-color: var(--color-border) !important;
-		color: var(--color-text) !important;
+		background: var(--bg) !important;
+		border: 1px solid var(--rule) !important;
+		color: var(--ink) !important;
 	}
-
 	.article-comments :global(.ec-comment-form-submit) {
-		background: var(--color-accent) !important;
-		color: var(--color-on-accent) !important;
+		background: var(--accent) !important;
+		color: white !important;
+		border-radius: 999px !important;
 	}
 
-	.comments-lazy {
-		min-height: 80px;
-	}
-
+	.comments-lazy { min-height: 80px; }
 	.comments-lazy :global(.ec-comments-heading) {
-		font-size: var(--font-size-2xl);
-		font-weight: 600;
-		margin-bottom: var(--spacing-8);
+		font-family: var(--font-display);
+		font-size: 22px;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		margin-bottom: 24px;
+		padding-bottom: 12px;
+		border-bottom: 2px solid var(--ink);
 	}
-
 	.comments-lazy :global(.ec-comments-list),
 	.comments-lazy :global(.ec-comment-replies) {
 		list-style: none;
 		padding: 0;
 		margin: 0;
 	}
-
-	.comments-lazy :global(.ec-comments-list > li + li) {
-		margin-top: var(--spacing-6);
-	}
-
+	.comments-lazy :global(.ec-comments-list > li + li) { margin-top: 24px; }
 	.comments-lazy :global(.ec-comment) {
-		padding-bottom: var(--spacing-6);
-		border-bottom: 1px solid var(--color-border);
+		padding-bottom: 24px;
+		border-bottom: 1px solid var(--rule);
 	}
-
 	.comments-lazy :global(.ec-comment-replies) {
-		margin-top: var(--spacing-6);
-		padding-left: var(--spacing-8);
+		margin-top: 24px;
+		padding-left: 32px;
 	}
-
-	.comments-lazy :global(.ec-comment-replies > li + li) {
-		margin-top: var(--spacing-6);
-	}
-
+	.comments-lazy :global(.ec-comment-replies > li + li) { margin-top: 24px; }
 	.comments-lazy :global(.ec-comment-header) {
 		display: flex;
 		align-items: baseline;
-		gap: var(--spacing-2);
+		gap: 8px;
 		flex-wrap: wrap;
 	}
-
 	.comments-lazy :global(.ec-comment-author) {
 		font-weight: 600;
+		color: var(--ink);
 	}
-
 	.comments-lazy :global(.ec-comment-date) {
-		font-size: var(--font-size-sm);
-		color: var(--color-muted);
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-3);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
 	}
-
 	.comments-lazy :global(.ec-comment-body) {
-		margin-top: var(--spacing-2);
+		margin-top: 8px;
 		white-space: pre-wrap;
 		word-break: break-word;
+		color: var(--ink-2);
 	}
-
 	.comments-loading,
 	.comments-empty,
 	.comments-error {
-		color: var(--color-muted);
-		font-size: var(--font-size-sm);
-		padding: var(--spacing-4) 0;
+		color: var(--ink-3);
+		font-size: 13px;
+		padding: 14px 0;
 	}
-
 	.comments-noscript {
-		color: var(--color-muted);
-		font-size: var(--font-size-sm);
-	}
-
-	/* More posts */
-	.more-posts {
-		margin-top: var(--spacing-12);
-		padding-top: var(--spacing-8);
-		border-top: 1px solid var(--color-border);
-	}
-
-	.more-title {
-		font-size: var(--font-size-2xl);
-		font-weight: 600;
-		margin-bottom: var(--spacing-8);
-	}
-
-	/* Responsive */
-	@media (max-width: 900px) {
-		.post-layout {
-			grid-template-columns: 1fr;
-		}
-
-		.post-sidebar {
-			position: static;
-		}
+		color: var(--ink-3);
+		font-size: 13px;
 	}
 
 	@media (max-width: 600px) {
-		.article-title {
-			font-size: var(--font-size-2xl);
-		}
+		.review-title { font-size: 28px; }
 	}
 </style>
 
@@ -546,8 +770,6 @@ const authorName = bylines.length > 0 ? bylines[0].byline.displayName : null;
 		});
 	};
 
-	// Build a body element with URL auto-linking. User text goes through
-	// textContent (no HTML parsing); anchors are constructed via createElement.
 	const buildBody = (text: string): HTMLDivElement => {
 		const div = document.createElement("div");
 		div.className = "ec-comment-body";
