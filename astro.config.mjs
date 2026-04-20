@@ -4,7 +4,6 @@ import { d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { formsPlugin } from "@emdash-cms/plugin-forms";
 import { webhookNotifierPlugin } from "@emdash-cms/plugin-webhook-notifier";
 import { agentMailPlugin } from "plugin-agentmail";
-import { seoToolkitPlugin } from "plugin-seo-toolkit";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 
@@ -24,7 +23,6 @@ export default defineConfig({
 			plugins: [
 				formsPlugin(),
 				agentMailPlugin(),
-				seoToolkitPlugin(),
 			],
 			sandboxed: [webhookNotifierPlugin()],
 			sandboxRunner: sandbox(),
