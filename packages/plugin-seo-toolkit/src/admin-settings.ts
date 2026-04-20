@@ -6,8 +6,6 @@ export async function buildSettingsTab(ctx: PluginContext): Promise<any[]> {
 	const autoRefresh = (await ctx.kv.get<boolean>("settings:autoRefresh")) ?? true;
 	const lastRefresh = await ctx.kv.get<string>("settings:lastRefresh");
 	const hasPassword = !!(await ctx.kv.get<string>("settings:dataforseoPassword"));
-	const hyperagentWebhookUrl = (await ctx.kv.get<string>("settings:hyperagentWebhookUrl")) ?? "";
-	const hasWebhookSecret = !!(await ctx.kv.get<string>("settings:hyperagentWebhookSecret"));
 
 	return [
 		{ type: "header", text: "Settings" },
@@ -46,19 +44,6 @@ export async function buildSettingsTab(ctx: PluginContext): Promise<any[]> {
 					label: "Auto-refresh data weekly (rankings, backlinks, audit)",
 					initial_value: autoRefresh,
 				},
-				{
-					type: "text_input",
-					action_id: "hyperagentWebhookUrl",
-					label: "SEO Agent — Webhook URL",
-					initial_value: hyperagentWebhookUrl,
-					placeholder: "https://hyperagent.com/api/webhooks/.../receive",
-				},
-				{
-					type: "secret_input",
-					action_id: "hyperagentWebhookSecret",
-					label: hasWebhookSecret ? "SEO Agent — Webhook Secret (saved)" : "SEO Agent — Webhook Secret",
-					placeholder: hasWebhookSecret ? "Secret saved — leave blank to keep" : "From HyperAgent webhook settings",
-				},
 			],
 			submit: { label: "Save Settings", action_id: "save_seo_settings" },
 		},
@@ -86,8 +71,7 @@ export async function saveSettings(
 		await ctx.kv.set("settings:domain", values.domain.trim());
 	if (typeof values.autoRefresh === "boolean")
 		await ctx.kv.set("settings:autoRefresh", values.autoRefresh);
-	if (typeof values.hyperagentWebhookUrl === "string" && values.hyperagentWebhookUrl.trim())
-		await ctx.kv.set("settings:hyperagentWebhookUrl", values.hyperagentWebhookUrl.trim());
-	if (typeof values.hyperagentWebhookSecret === "string" && values.hyperagentWebhookSecret !== "")
-		await ctx.kv.set("settings:hyperagentWebhookSecret", values.hyperagentWebhookSecret);
+
+	await ctx.kv.delete("settings:hyperagentWebhookUrl");
+	await ctx.kv.delete("settings:hyperagentWebhookSecret");
 }

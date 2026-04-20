@@ -126,8 +126,6 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
     );
   }
 
-  // Entry scores table with SEO Agent actions
-  const hasHyperagent = !!(await ctx.kv.get<string>("settings:hyperagentWebhookUrl"));
   const domain = (await ctx.kv.get<string>("settings:domain")) ?? "practicaltravelgear.com";
   const top50 = results.slice(0, 50);
 
@@ -185,22 +183,6 @@ export async function buildDashboardTab(ctx: PluginContext): Promise<any[]> {
         rows: entryRows,
       },
     );
-
-    // SEO Agent action buttons for low-scoring entries
-    if (hasHyperagent) {
-      const lowScoreEntries = top50.filter((r) => r.score < 70);
-      if (lowScoreEntries.length > 0) {
-        blocks.push({
-          type: "actions",
-          elements: lowScoreEntries.slice(0, 10).map((r) => ({
-            type: "button",
-            label: `Send: ${r.title.slice(0, 30)}${r.title.length > 30 ? "…" : ""} (${r.score})`,
-            action_id: `hyperagent:${r.collection}:${r.entryId}`,
-            style: "primary",
-          })),
-        });
-      }
-    }
   }
 
   return blocks;
