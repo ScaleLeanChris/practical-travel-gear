@@ -108,6 +108,13 @@
 			"hierarchical": true,
 			"collections": ["posts"],
 			"terms": [
+				{ "slug": "luggage", "label": "Luggage" },
+				{ "slug": "packs", "label": "Packs" },
+				{ "slug": "apparel", "label": "Apparel" },
+				{ "slug": "footwear", "label": "Footwear" },
+				{ "slug": "tech", "label": "Tech" },
+				{ "slug": "accessories", "label": "Accessories" },
+				{ "slug": "camping", "label": "Camping" },
 				{ "slug": "development", "label": "Development" },
 				{ "slug": "design", "label": "Design" },
 				{ "slug": "notes", "label": "Notes" }
